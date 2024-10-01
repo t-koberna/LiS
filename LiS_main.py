@@ -5,7 +5,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scikits.odes import dae
-from LiS_functions import bucket, Index_start, residual_case1
+from LiS_functions import bucket, Index_start, residual
 
 # Anode is on the left at x=0 and Cathode is on the right
 # Li -> Li+ + e- (reaction at the anode)
@@ -21,20 +21,25 @@ R = 8.3145 #Universal gas constant [J/mol-K]
 USER INPUTS
 '''
 ## Simulation parameters
-V_min = -10 # Minimum cell voltage at which to terminate the integration [V]
-V_max = 10 # Maximum cell voltage at which to terminate the integration [V]
-X_Li_min = 0.01 # Lithium mole fraction in an electrode at which to terminate the integration [-]
-X_Li_max = 0.99 # Lithium mole fraction in an electrode at which to terminate the integration [-]
+# I will add to theses later, for now the only termination checks
+# are if one of the buckets has a negative value for the number of particles, or if the final bucket gets too full
+S8_limit = 1e-3 # The maximum number of particles that can be in the final bucket for S_8
+Li2S_limit = 1e-3 # The maximum number of particles that can be in the final bucket for Li_2S
 
 ## Operating Conditions
-# If there is more than one external current the simulation will run back to back
-i_external = np.array([100]) # external current into the Anode [A/m^2] 
-t_sim_max = [1] # the maximum time the battery will be held at each current [s]
+t_sim_max = [100] # the maximum time the battery will be held at each current [s]
 T = 298.15 # standard temperature [K]
 
 ## Material Properties
 rho_C = 2260 # density of carbon [kg/m^3]
 rho_S8 = 2070 # density of Sulfur (S8) [kg/m^3]
+rho_Li2S = 1660 # density of Li_2S [kg/m^3]
+
+MW_S8 = 0.25652  # molecular weight [kg/mol]
+MW_Li2S = 0.045947 # molecular weight [kg/mol]
+
+mv_S8 = MW_S8/rho_S8 # constant molar volume S_8 [m^3/mol]
+mv_Li2S = MW_Li2S/rho_Li2S # constant molar volume Li_2S [m^3/mol]
 
 ## Initial Values
 Phi_dl_0_an = -0.64 # initial value for Phi_dl for the Anode [V]
@@ -49,42 +54,24 @@ w_C_0 = 0.2 # Initial weight percent of the Carbon Phase [kg_C/kg_total]
 ## Material parameters: (Replaced by Cantera?)
 sigma_sep = 1.2 # Ionic conductivity for the seperator [1/m-ohm] (this is concentration dependent but it is constant for now)
 # Standard Gibbs free energy of formation [J/mol] (need to update)
-G_S8 = 40000 
-G_S8_min = 40000 
-G_Li = -230000
-G_Li_plus = -293300
-# Standard entropy [J/mol-K]
-S_S8 = 4
-S_S8_min = 5
-S_Li = -11.2
-S_Li_plus = 49.7
 # Microstructure
-t_sep =  1e-5 # thickness of the seperator [m]
-n_y_sep = 4 # number of nodes inside the seperator
 Delta_y_an = 50*10**-6 # Anode thickness [m]
-#r_an = 5*10**-6 # Anode particle radius [m]
-#n_r_an = 5 # Number of radial nodes in the anode
 Delta_y_ca = 50*10**-6 # Cathode thickness [m]
-r_ca = 3*10**-6 # Cathode particle radius [m]
-n_r_ca = 5 # Number of radial nodes in the cathode
 
 '''
 Parameters
 '''
-Epsilon_C =  w_C_0*m_S8_0/w_S8_0/rho_C/Delta_y_ca# Volume fraction of the carbon in the cathode [-] (will not change)
+Epsilon_C =  w_C_0*m_S8_0/w_S8_0/rho_C/Delta_y_ca # Volume fraction of the carbon in the cathode [-] (will not change)
 Epsilon_S8_0 = m_S8_0/rho_S8/Delta_y_ca # Initial volume fraction of S_8 in the cathode [-]
-Epsilon_eltye = 1 - Epsilon_C - Epsilon_S8_0 # Initial volume fraction of electrolyte in the cathode [-]
+Epsilon_Li2S_0 = 0 # Initial volume fraction of Li_2S in the cathode, will have a formula laters
+Epsilon_eltye = 1 - Epsilon_C - Epsilon_S8_0 - Epsilon_Li2S_0 # Initial volume fraction of electrolyte in the cathode [-]
+
+area_carbon_0 = 10**-4 # inital area of carbon (this is the area where nucleation happens) [m^2]
 
 ## Geometry
 # Anode
-
-
 # Cathode
-Vol_ca = (4*np.pi/3)*r_ca**3 # Volume of a single anode particle [m^3]
-A_surf_ca = 4*np.pi*r_ca**2 # geometric surface area of a single anode particle [m^2]
-A_s_ca = 3/r_ca # ratio of surface area to volume for the graphite anode [1/m]
-#replace equation
-#A_sg_ca = Epsilon_C*Delta_y_ca*A_s_ca # interface surface area per geometric surface area [m^2_interface/m^2_geometric]\
+
 
 '''
 Above are general inputs I will use later on, for now I am starting with a reduced case
@@ -94,24 +81,26 @@ h = 1e-4 # height of the tank [m] (not used in case 1)
 
 # Each of the buckets are the same size, with the exception of the final bucket which will extend to infinity
 n_bucket_S8 = 4 # number of buckets for S8 [-]
-n_bucket_Li2S = 5 # number of buckets for Li2S [-]
+n_bucket_Li2S = 10 # number of buckets for Li2S [-]
 
 t_bucket_S8 = 1e-8 # the radius range (aka thickness) of each bucket for S8 [m]
 t_bucket_Li2S = 2e-8 # the radius range (aka thickness) of each bucket for Li2S [m]
 
-bucket_S8 = bucket(n_bucket_S8,t_bucket_S8,"S_8")
-bucket_Li2S = bucket(n_bucket_Li2S,t_bucket_Li2S,"Li_2S")
+bucket_S8 = bucket(n_bucket_S8,t_bucket_S8,mv_S8,"S_8")
+bucket_Li2S = bucket(n_bucket_Li2S,t_bucket_Li2S,mv_Li2S,"Li_2S")
 
-SV_index = Index_start(n_bucket_S8,n_bucket_Li2S)
+SV_index = Index_start(n_bucket_S8,n_bucket_Li2S) # Holds the pointers for the SV vector
 
 '''
 Initialize the SV vector
 '''
-sim_inputs = np.zeros(n_bucket_S8 + n_bucket_Li2S)
-print(sim_inputs[:SV_index.S8])
-# I put S8 on top of Li2S, everything starts at zero for now
+sim_inputs = np.zeros(n_bucket_S8 + n_bucket_Li2S + 2)
+
+# I put S8 on top of Li2S. All buckets everything start with zero particles
 sim_inputs[:SV_index.S8] = np.zeros(n_bucket_S8)
 sim_inputs[SV_index.S8:SV_index.Li2S] = np.zeros(n_bucket_Li2S)
+sim_inputs[-2] = Epsilon_S8_0 
+sim_inputs[-1] = Epsilon_Li2S_0 
 
 time_start = 0 # Initial time [s]
 time_end = t_sim_max[0] #Final time [s]
@@ -120,9 +109,8 @@ times = np.linspace(time_start,time_end,1000)
 '''
 Integration
 '''
-S8_limit = 1e-3
-Li2S_limit = 1e-3
 # Integration Limits 
+# will add concentration and volatage checks later on
 n_roots = 3 # number of termination checks
 def terminate_check(t,SV,SV_dot,return_val,user_data):
     #checks the number of particles in the largest boxes
@@ -140,11 +128,11 @@ algvars = []
 
 # I am not sure if these will be params or if the residual can call cantera directly
 #[s_k_nuc_S8,s_k_grow_S8,s_k_nuc_Li2S,s_k_grow_Li2S] are the first 4 terms in params [mol/m^3]
-params = [0,0,0.008,0.2, SV_index, bucket_S8, bucket_Li2S]
+params = [0,0,0.000008,2, SV_index, bucket_S8, bucket_Li2S,Epsilon_C,area_carbon_0]
 options =  {'user_data':params, 'rtol':1e-8,
         'atol':1e-12, 'algebraic_vars_idx':algvars, 'first_step_size':1e-15,'rootfn':terminate_check,'nr_rootfns':n_roots}
             # , 'compute_initcond':'yp0', 'max_steps':10000}
-solver = dae('ida', residual_case1, **options)
+solver = dae('ida', residual, **options)
 
 SV_0 = sim_inputs
 SV_dot_0  = np.zeros_like(SV_0)
@@ -152,17 +140,15 @@ solution = solver.solve(times, SV_0, SV_dot_0)
 sim_outputs =np.stack((*np.transpose(solution.values.y), solution.values.t))
 
 '''
-Post Processing
+Post Processing          
 '''
 N_S8  = sim_outputs[:SV_index.S8]
 N_Li2S  = sim_outputs[SV_index.S8:SV_index.Li2S] 
 time = sim_outputs[-1]
 
-####RGHUIJPOUBVGYCF VBUIONMUVGYCBIOMP< Change this only for error checking
-sim_outputs =np.stack((*np.transpose(solution.values.yp), solution.values.t))
-N_S8  = sim_outputs[:SV_index.S8]
-
 #print(N_Li2S)
+
+# Issue is every bucket grows many order of magnitudes slower than the bucket bellow it 
 '''
 plot the results 
 '''
