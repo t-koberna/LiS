@@ -128,7 +128,7 @@ algvars = []
 
 # I am not sure if these will be params or if the residual can call cantera directly
 #[s_k_nuc_S8,s_k_grow_S8,s_k_nuc_Li2S,s_k_grow_Li2S] are the first 4 terms in params [mol/m^3]
-params = [0,0,0.000008,2, SV_index, bucket_S8, bucket_Li2S,Epsilon_C,area_carbon_0]
+params = [1e-6,2e-6,0.000008,0.000007, SV_index, bucket_S8, bucket_Li2S,Epsilon_C,area_carbon_0]
 options =  {'user_data':params, 'rtol':1e-8,
         'atol':1e-12, 'algebraic_vars_idx':algvars, 'first_step_size':1e-15,'rootfn':terminate_check,'nr_rootfns':n_roots}
             # , 'compute_initcond':'yp0', 'max_steps':10000}
