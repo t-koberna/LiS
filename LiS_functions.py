@@ -30,22 +30,41 @@ class Index_start:
     def __init__(self,n_buckets_S8,n_buckets_Li2S):
         self.S8 = n_buckets_S8                    
         self.Li2S = n_buckets_S8  + n_buckets_Li2S
+        self.mol_S8_ca = n_buckets_S8  + n_buckets_Li2S
+        self.mol_Li2S_ca = n_buckets_S8  + n_buckets_Li2S + 1
+        self.mol_S8_elyte = n_buckets_S8  + n_buckets_Li2S + 2
+        self.mol_Li2S_elyte = n_buckets_S8  + n_buckets_Li2S + 3
 
+def cs_area_phase(bucket_phase,n_particles_phase):
+    '''
+    Find the total cross sectional area of a phase deposited on the Cathode
+    This is for S_8 and Li_2S. The cross sectional area is half the surface area
+    '''
+    CS_area_phase = [0]*bucket_phase.n
+    for i in range(bucket_phase.n):
+        CS_area_phase[i] = np.pi*((bucket_phase.r_avg[i])**2)*n_particles_phase[i]
+    CS_area_phase = sum(CS_area_phase) 
+    return CS_area_phase
+
+def volume_phase(bucket_phase,n_particles_phase):
+    '''
+    Find the total volume of a phase deposited on the Cathode
+    This is for S_8 and Li_2S
+    '''
+    Vol_phase = [0]*bucket_phase.n
+    for i in range(bucket_phase.n):
+        Vol_phase[i] = 2/3*np.pi*((bucket_phase.r_avg[i])**3)*n_particles_phase[i]
+    Vol_phase = sum(Vol_phase) 
+    return Vol_phase
+    
 def area_carbon(bucket_S8,n_particles_S8,bucket_Li2S,n_particles_Li2S,area_carbon_0):
     '''
-    Finds the cross sectional area occupied by the phases, uses that to find the area 
+    Finds the cross sectional area occupied by the phases, then uses that to find the area 
     of carbon that is availible for nucleation
     '''
-    CS_area_S8 = [0]*bucket_S8.n
-    for i in range(bucket_S8.n):
-        CS_area_S8[i] = np.pi*((bucket_S8.r_avg[i])**2)*n_particles_S8[i]
-    CS_area_S8 = sum(CS_area_S8) 
-    
-    CS_area_Li2S = [0]*bucket_Li2S.n
-    for i in range(bucket_Li2S.n):
-        CS_area_Li2S[i] = np.pi*((bucket_Li2S.r_avg[i])**2)*n_particles_Li2S[i]
-    CS_area_Li2S = sum(CS_area_Li2S) 
-    
+    CS_area_S8 = cs_area_phase(bucket_S8,n_particles_S8)
+    CS_area_Li2S = cs_area_phase(bucket_Li2S,n_particles_Li2S)
+        
     # I may find a termination check to stop things once this happens later
     area_carbon = area_carbon_0 - CS_area_S8 - CS_area_Li2S
     if area_carbon<0:
@@ -53,6 +72,19 @@ def area_carbon(bucket_S8,n_particles_S8,bucket_Li2S,n_particles_Li2S,area_carbo
     
     #print(area_carbon)
     return area_carbon
+
+def volume_fraction(vol_0,bucket_S8,n_particles_S8,bucket_Li2S,n_particles_Li2S):
+    # the volume fractions for S8 and Li2S only take into account the deposited solids on the 
+    # cathode surface. The electroyle encompasses all disovled species 
+    
+    vol_S8 = volume_phase(bucket_S8, n_particles_S8)
+    epsilon_S8 = vol_S8/vol_0
+    
+    vol_Li2S = volume_phase(bucket_Li2S, n_particles_Li2S)
+    epsilon_Li2S = vol_Li2S/vol_0
+    
+    epsilon_eltye = 1 - epsilon_S8 - epsilon_Li2S
+    return [epsilon_eltye, epsilon_S8, epsilon_Li2S]
 
 def particle_flux(bucket, nuc_rate_per_area, grow_rate_per_area, n_particles, area_carbon):
     s_grow_rates = [0]*bucket.n # the growth rate for each bucket [events/s]
@@ -100,14 +132,19 @@ def residual(t,SV,SV_dot,resid,user_data):
     SV_index = user_data[4]
     bucket_S8 = user_data[5]
     bucket_Li2S = user_data[6]
-    Epsilon_C = user_data[7]
-    area_carbon_0 = user_data[8]    
+    area_carbon_0 = user_data[7]    
       
     # read state variable values    
     Np_S8 = SV[:SV_index.S8]
-    Np_Li2S = SV[SV_index.S8:-2]
-    Epsilon_S8 = SV[-2]
-    Epsilon_Li2S = SV[-1]
+    Np_Li2S = SV[SV_index.S8:SV_index.Li2S]
+    mol_S8_ca = SV[SV_index.mol_S8_ca]
+    mol_Li2S_ca = SV[SV_index.mol_Li2S_ca]   
+    mol_S8_elyt = SV[SV_index.mol_S8_elyte]
+    mol_Li2S_elyt = SV[SV_index.mol_Li2S_elyte]
+
+    # Used to cut off nucleation
+    #if t>1:
+        #s_k_nuc_Li2S_per_area = s_k_nuc_Li2S_per_area*0
     
     a_carbon = area_carbon(bucket_S8,Np_S8,bucket_Li2S,Np_Li2S,area_carbon_0)
     
@@ -126,9 +163,14 @@ def residual(t,SV,SV_dot,resid,user_data):
     # Li2S   
     resid[SV_index.S8:SV_index.Li2S] = SV_dot[SV_index.S8:SV_index.Li2S] - Np_flux_Li2S
     
-    # Volume Fractions
-    # right now I am not updating the interfacial areas using the a_m formula (21) so I also cannot use equation (1)
-    # to write these residials so they are zero for now
-    resid[-2] = SV_dot[-2]
-    resid[-1] = SV_dot[-1]
+    # Concentrations In the electroltye
+    CS_area_S8 = cs_area_phase(bucket_S8,Np_S8)
+    CS_area_Li2S = cs_area_phase(bucket_Li2S,Np_Li2S)
+    
+    # moles of Li2S and S8
+    resid[SV_index.mol_S8_ca] = SV_dot[SV_index.mol_S8_ca] - s_k_nuc_S8_per_area*a_carbon - CS_area_S8*s_k_grow_S8_per_area
+    resid[SV_index.mol_Li2S_ca] = SV_dot[SV_index.mol_Li2S_ca] - s_k_nuc_Li2S_per_area*a_carbon - CS_area_Li2S*s_k_grow_Li2S_per_area
+    
+    resid[SV_index.mol_S8_elyte] = SV_dot[SV_index.mol_S8_elyte] + s_k_nuc_S8_per_area*a_carbon + CS_area_S8*s_k_grow_S8_per_area
+    resid[SV_index.mol_Li2S_elyte] = SV_dot[SV_index.mol_Li2S_elyte] + s_k_nuc_Li2S_per_area*a_carbon + CS_area_Li2S*s_k_grow_Li2S_per_area
     
