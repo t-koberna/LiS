@@ -103,7 +103,7 @@ def particle_flux(bucket, nuc_rate_per_area, grow_rate_per_area, n_particles, le
     # only include the rate from the bucket above if it adds to current bucket (aka when it is negative)
     # only include the rate from the bucket below if it adds to current bucket (aka when it is positive)
     # I need a seperate statement for the first and last buckets
-    
+   
     
     # locate bookmarks
     indx_bm_leading = int(leading_bookmark/bucket.thickness)
@@ -119,8 +119,11 @@ def particle_flux(bucket, nuc_rate_per_area, grow_rate_per_area, n_particles, le
             #flux_factor[indx_bm_trailing] = 1
     
     if grow_rate_per_area > 0: 
-        Np_flux[0] = nuc_rate_per_area*area_carbon - drdt/bucket.thickness*n_particles[1]*flux_factor[0]
-        Np_flux[1:-1] = drdt/bucket.thickness*np.multiply(n_particles[:-2],flux_factor[:-2]) - drdt/bucket.thickness*np.multiply(n_particles[1:-1],flux_factor[1:-1]) 
+        Np_flux[0] = nuc_rate_per_area*area_carbon - drdt/bucket.thickness*n_particles[0]*flux_factor[0]
+        #print(drdt/bucket.thickness*n_particles[1]*flux_factor[0])
+        print(n_particles[1]*flux_factor[0])
+        Np_flux[1:-1] = (drdt/bucket.thickness*np.multiply(n_particles[:-2],flux_factor[:-2]) 
+                         - drdt/bucket.thickness*np.multiply(n_particles[1:-1],flux_factor[1:-1]) )
         Np_flux[-1] = drdt/bucket.thickness*n_particles[-2]*flux_factor[-2]
         #if indx_bm_leading > 0:
             #Np_flux[indx_bm_leading]=Np_flux[indx_bm_leading-1]
@@ -247,8 +250,10 @@ def residual_ivp(t,SV, s_k_nuc_S8_per_area,s_k_grow_S8_per_area,s_k_nuc_Li2S_per
         s_k_nuc_S8_per_area = 0
     if t>20:
         s_k_nuc_Li2S_per_area = 0 
-        
-    a_carbon = area_carbon(bucket_S8,Np_S8,bucket_Li2S,Np_Li2S,area_carbon_0)
+    
+    # simplifying case where nuclation rate is constant    
+    a_carbon = area_carbon_0 #area_carbon(bucket_S8,Np_S8,bucket_Li2S,Np_Li2S,area_carbon_0)
+    
     # get the particle growth rates for each bucket [particles/m^2]
     Np_flux_S8 = particle_flux(bucket_S8, s_k_nuc_S8_per_area, s_k_grow_S8_per_area, Np_S8, bm_S8_front, bm_S8_back, a_carbon)
     Np_flux_Li2S = particle_flux(bucket_Li2S, s_k_nuc_Li2S_per_area, s_k_grow_Li2S_per_area, Np_Li2S, bm_Li2S_front, bm_Li2S_back, a_carbon)
@@ -282,13 +287,13 @@ def residual_ivp(t,SV, s_k_nuc_S8_per_area,s_k_grow_S8_per_area,s_k_nuc_Li2S_per
     nuc_cuttoff = 1e-10 # value nucleation needs to be bellow for me to assume the nucleation stage is over 
     # I assume that the process starts with no particles depsosited
     dSVdt[SV_index.bm_S8_front] = drdt_S8
-    if sum(Np_S8)> 0 and s_k_nuc_S8_per_area <= nuc_cuttoff:
+    if abs(sum(Np_S8))> 0 and s_k_nuc_S8_per_area <= nuc_cuttoff:
         dSVdt[SV_index.bm_S8_back] =  drdt_S8
     else:
         dSVdt[SV_index.bm_S8_back] = 0
 
     dSVdt[SV_index.bm_Li2S_front] =  drdt_Li2S
-    if sum(Np_Li2S)> 0 and s_k_nuc_Li2S_per_area <= nuc_cuttoff:
+    if abs(sum(Np_Li2S))> 0 and s_k_nuc_Li2S_per_area <= nuc_cuttoff:
         dSVdt[SV_index.bm_Li2S_back] =   drdt_Li2S
     else:
         dSVdt[SV_index.bm_Li2S_back] = 0
