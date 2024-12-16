@@ -4,7 +4,9 @@
 #   It is called by the user to run the model
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mP
 from scikits.odes import dae
+from scipy.integrate import solve_ivp
 from LiS_functions import bucket, Index_start, residual, area_carbon, cs_area_phase, volume_fraction
 
 # Anode is on the left at x=0 and Cathode is on the right
@@ -85,7 +87,7 @@ SV_index = Index_start(n_bucket_S8,n_bucket_Li2S) # Holds the pointers for the S
 '''
 Initialize the SV vector
 '''
-sim_inputs = np.zeros(n_bucket_S8 + n_bucket_Li2S + 2 + 2)
+sim_inputs = np.zeros(n_bucket_S8 + n_bucket_Li2S + 2 + 2 + 4)
 
 # I put S8 on top of Li2S. All buckets everything start with zero particles
 sim_inputs[:SV_index.S8] = np.zeros(n_bucket_S8)
@@ -94,10 +96,14 @@ sim_inputs[SV_index.mol_S8_ca] = 0
 sim_inputs[SV_index.mol_Li2S_ca] = 0
 sim_inputs[SV_index.mol_S8_elyte] = mol_S8_elyt_0 
 sim_inputs[SV_index.mol_Li2S_elyte] = mol_Li2S_elyt_0 
+sim_inputs[SV_index.bm_S8_front] = 0 
+sim_inputs[SV_index.bm_S8_back] = 0 
+sim_inputs[SV_index.bm_Li2S_front] = 0 
+sim_inputs[SV_index.bm_Li2S_back] = 0
 
 time_start = 0 # Initial time [s]
 time_end = t_sim_max[0] #Final time [s]
-times = np.linspace(time_start,time_end,1000)
+times = np.linspace(time_start,time_end,1001)
 
 '''
 Integration
@@ -121,7 +127,9 @@ algvars = []
 
 # I am not sure if these will be params or if the residual can call cantera directly
 #[s_k_nuc_S8,s_k_grow_S8,s_k_nuc_Li2S,s_k_grow_Li2S] are the first 4 terms in params [mol/m^3]
-params = [0.002,1e-3,0.002,1e-3 , SV_index, bucket_S8, bucket_Li2S,area_carbon_0]
+grow_rate_per_area = 2e-4
+nuc_rate_per_area = 4e-1 
+params = [nuc_rate_per_area,grow_rate_per_area,nuc_rate_per_area,grow_rate_per_area , SV_index, bucket_S8, bucket_Li2S,area_carbon_0]
 options =  {'user_data':params, 'rtol':1e-8,
         'atol':1e-10, 'algebraic_vars_idx':algvars, 'first_step_size':1e-15,'rootfn':terminate_check,'nr_rootfns':num_roots}
             # , 'compute_initcond':'yp0', 'max_steps':10000}
@@ -141,6 +149,10 @@ mol_S8_ca = sim_outputs[SV_index.mol_S8_ca]
 mol_Li2S_ca = sim_outputs[SV_index.mol_Li2S_ca]
 mol_S8_elyt = sim_outputs[SV_index.mol_S8_elyte]
 mol_Li2S_elyt = sim_outputs[SV_index.mol_Li2S_elyte]
+bm_S8_front = sim_outputs[SV_index.bm_S8_front]
+bm_S8_back = sim_outputs[SV_index.bm_S8_back]
+bm_Li2S_front = sim_outputs[SV_index.bm_Li2S_front]
+bm_Li2S_back = sim_outputs[SV_index.bm_Li2S_back]
 time = sim_outputs[-1]
 
 a_c = [0]*len(time)
@@ -166,62 +178,151 @@ for i in range(len(time)):
 '''
 plot the results 
 '''
+# pick what plots to display (1 yes, anything else no)
+num_particles_bin = 1
+cs_area = 0
+total_particles = 0
+conc_and_moles = 0
+vol_frac = 0
+
 # Number of particles
-fig1, (ax1, ax2) = plt.subplots(2)
-for ind, ele in enumerate(N_S8):
-    ax1.plot(time,ele,label=str(ind))
-for ind, ele in enumerate(N_Li2S):
-    ax2.plot(time,ele,label=str(ind))
-#ax1.legend(ncol=1, bbox_to_anchor=(1, 0.5),loc = 'center left')
-ax1.set_title(r"S$_8$")
-ax1.set_ylabel("Number of Particles [-]")
-#ax2.legend(ncol=1, bbox_to_anchor=(1, 0.5),loc = 'center left')
-ax2.set_title(r"Li$_2$S")
-ax2.set_xlabel("time [s]")
-ax2.set_ylabel("Number of Particles [-]")
-fig1.tight_layout()
+if num_particles_bin == 1:
+    fig1, (ax1, ax2) = plt.subplots(2)
+    for ind, ele in enumerate(N_S8):
+        ax1.plot(time,ele,label=str(ind))
+    for ind, ele in enumerate(N_Li2S):
+        ax2.plot(time,ele,label=str(ind))
+    #ax1.legend(ncol=1, bbox_to_anchor=(1, 0.5),loc = 'center left')
+    ax1.set_title(r"S$_8$, "+str(bucket_S8.n)+" bins")
+    ax1.set_ylabel("Number of Particles [-]")
+    #ax2.legend(ncol=1, bbox_to_anchor=(1, 0.5),loc = 'center left')
+    ax2.set_title(r"Li$_2$S, "+str(bucket_Li2S.n)+" bins")
+    ax2.set_xlabel("time [s]")
+    ax2.set_ylabel("Number of Particles [-]")
+    fig1.tight_layout()
 
 # Cross sectional area on cathode surface
-fig2, (ax3, ax4) = plt.subplots(2)
-ax3.plot(time,a_c)
-ax3.set_title("Area of Carbon [m$^2$]")
-ax4.plot(time,a_S8, label = r'$S_8$')
-ax4.plot(time,a_Li2S, label = r'$Li_2S$')
-ax4.legend(ncol=1, loc = 'upper left')
-ax4.set_xlabel("time [s]")
-ax4.set_ylabel(r"Cross Sectional Area [m$^2$]")
-fig2.tight_layout()
+if cs_area == 1:
+    fig2, (ax3, ax4) = plt.subplots(2)
+    ax3.plot(time,a_c)
+    ax3.set_title("Area of Carbon [m$^2$]")
+    ax4.plot(time,a_S8, label = r'$S_8$')
+    ax4.plot(time,a_Li2S, label = r'$Li_2S$')
+    ax4.legend(ncol=1, loc = 'upper left')
+    ax4.set_xlabel("time [s]")
+    ax4.set_ylabel(r"Cross Sectional Area [m$^2$]")
+    fig2.tight_layout()
 
 # Number of deposited particles
-fig3 = plt.figure()
-plt.title("Total number of particles")
-plt.plot(time,sum(N_S8))
-plt.plot(time,sum(N_Li2S))
-plt.legend([r"S$_8$",r"Li$_2$S"])
+if total_particles == 1:
+    fig3 = plt.figure()
+    plt.title("Total number of particles")
+    plt.plot(time,sum(N_S8))
+    plt.plot(time,sum(N_Li2S))
+    plt.legend([r"S$_8$",r"Li$_2$S"])
 
 # moles of species in the electrolyte and cathode
 # plus concentration of species in the electrolyte
-fig4, (ax5, ax6) = plt.subplots(2)
-ax5.set_title("Electrolyte Concentrations [mol/m]")
-ax5.plot(time,mol_S8_elyt/h,label=r"S$_8$")
-ax5.plot(time,mol_Li2S_elyt/h,label=r"Li$_2$S")
-ax5.legend()
-ax6.set_title("Moles of species")
-ax6.plot(time,mol_S8_elyt,label=r"$\rm S_{8(elyte)}$")
-ax6.plot(time,mol_Li2S_elyt,label=r"$\rm Li_2S_{(elyte)}$")
-ax6.plot(time,mol_S8_ca,label=r"$\rm S_{8(ca)}$")
-ax6.plot(time,mol_Li2S_ca,label=r"$\rm Li_2S_{(ca)}$")
-ax6.legend()
-fig4.tight_layout()
+if conc_and_moles == 1:
+    fig4, (ax5, ax6, ax7) = plt.subplots(3)
+    ax5.set_title("Electrolyte Concentrations [mol/m]")
+    ax5.plot(time,mol_S8_elyt/h,label=r"S$_8$")
+    ax5.plot(time,mol_Li2S_elyt/h,label=r"Li$_2$S")
+    ax5.legend()
+    ax6.set_title("Moles of species")
+    ax6.plot(time,mol_S8_elyt,label=r"$\rm S_{8(elyte)}$")
+    ax6.plot(time,mol_Li2S_elyt,label=r"$\rm Li_2S_{(elyte)}$")
+    ax6.legend()
+    ax7.plot(time,mol_S8_ca,label=r"$\rm S_{8(ca)}$")
+    ax7.plot(time,mol_Li2S_ca,label=r"$\rm Li_2S_{(ca)}$")
+    ax7.set_xlim([0.5,3])
+    ax7.set_ylim([5e-6-1e-18,5e-6+1e-18])
+    ax7.legend()
+    ax7.set_xlabel("time [s]")
+    
+    fig4.tight_layout()
 
-fig5 = plt.figure()
-plt.plot(time,Epsilon_S8, label=r"S$_8$")
-plt.plot(time,Epsilon_Li2S, label=r"Li$_2$S")
-#plt.plot(time,Epsilon_eltye, label="elyte")
-plt.xlabel("time [s]")
-plt.title(r"Volume fraction")
-plt.ylabel(r"$\varepsilon$ [-]")
-plt.legend()
-fig5.tight_layout()
+if vol_frac == 1:
+    fig5 = plt.figure()
+    plt.plot(time,Epsilon_S8, label=r"S$_8$")
+    plt.plot(time,Epsilon_Li2S, label=r"Li$_2$S")
+    #plt.plot(time,Epsilon_eltye, label="elyte")
+    plt.xlabel("time [s]")
+    plt.title(r"Volume fraction")
+    plt.ylabel(r"$\varepsilon$ [-]")
+    plt.legend()
+    fig5.tight_layout()
+    
+#fig6 = plt.figure()
+#plt.plot(time,np.multiply(1e-3*2,a_Li2S))
+
+#mP.rcParams['mathtext.fontset'] = 'cm'
+
+cmap = mP.colormaps['plasma']
+figg = plt.figure()
+plot_percs = np.linspace(0.1,0.99,4)
+plot_percs = np.array([0.7,0.8,0.9,1])
+#plot_percs = np.array([0.125,0.25,0.5,1])
+time_frac = np.multiply(plot_percs,time_end)
+time_ind = np.multiply(plot_percs,len(time))
+particles_ind = [0]*len(time_ind)
+plt_clrs = [cmap(0.1),cmap(0.35),cmap(0.55),cmap(0.75)]
+plt_counter = 0
+for el in enumerate(time_ind):
+    for i in range(len(time)):
+        if i == int(el[1]-1):# or i == int(time_ind[1]) or i == int(time_ind[2]) or i == int(time_ind[3]) or i == int(time_ind[4]):
+            for ind, ele in enumerate(N_Li2S):
+                nLi2S[ind] = ele[i]
+            #print(ele[i])
+            #print(time[i])
+            plt.plot(bucket_Li2S.r_avg,np.divide(nLi2S,sum(nLi2S)),'.', color=plt_clrs[plt_counter],linewidth=3)#,label=str(round(time[i]/time_end,2)))
+            plt_counter = plt_counter + 1
+        
+   # particles_ind[i]= N_Li2S[int(ele)-1]
+plt.rcParams['font.family'] = 'Arial' 
+xTicks = np.array([0,1,2,3,4])*1e-7
+#plt.xlim([0,4e-7])
+#xTicklabels = np.array([r'$0$', r'$0.1$', r'$0.2$', r'$0.3$',r'$0.4$'])
+yTicks = np.array([0,0.1,0.2,0.3,0.4,0.5])
+yTicklabels = np.array([r'$0$', r'$10$', r'$20$', r'$30$',r'$40$',r'$50$'])
+# yTicklabels = np.array()
+plt.yticks(yTicks, yTicklabels, fontsize=12)
+#plt.xticks(xTicks, xTicklabels, fontsize=12)
+#plt.ylim([0,.40])
+#plt.legend([r'$0.125$', r'$0.25$', r'$0.5$', r'$1$'],title=r'$\frac{t}{t_\mathrm{max}}$=',fontsize=12,title_fontsize=16) 
+plt.legend([str(time[int(time_ind[0])]), str(time[int(time_ind[1])]), str(time[int(time_ind[2])]), str(time[int(time_ind[3]-1)])],title=r'$\frac{t}{t_\mathrm{max}}$=',fontsize=12,title_fontsize=16) 
+#plt.ylabel(r'Percent of Particles',fontsize=16)
+#plt.xlabel(r'Particle radius [$\mu$m]',fontsize=16)
+figg.tight_layout()
+#print(plt_clrs)
+
+plt_counter = 0
+figgg = plt.figure()
+for el in enumerate(time_ind):
+    for i in range(len(time)):
+        if i == int(el[1]-1):# or i == int(time_ind[1]) or i == int(time_ind[2]) or i == int(time_ind[3]) or i == int(time_ind[4]):
+            for ind, ele in enumerate(N_S8):
+                nS8[ind] = ele[i]
+            plt.plot(bucket_Li2S.r_avg,np.divide(nS8,sum(nS8)), color=plt_clrs[plt_counter],linewidth=3)#,label=str(round(time[i]/time_end,2)))
+            plt_counter = plt_counter + 1
+xTicks = np.array([0,1,2,3,4])*1e-7
+yTicks = np.array([0,0.1,0.2,0.3,0.4,0.5])
+yTicklabels = np.array([r'$0$', r'$10$', r'$20$', r'$30$',r'$40$',r'$50$'])
+plt.yticks(yTicks, yTicklabels, fontsize=12) 
+plt.title("S8")
+figgg.tight_layout()
+'''
+figgggg = plt.figure()
+for ind, ele in enumerate(N_S8):
+    plt.plot(time,ele-N_Li2S[ind],label=str(ind))
+#plt.plot(time,N_Li2S[-1])
+'''
+
+fif = plt.figure()
+plt.title(str(int(grow_rate_per_area*bucket_Li2S.mv/bucket_Li2S.thickness*100) )+"%")
+plt.plot(time,bm_Li2S_back,'.')
+plt.plot(time,bm_Li2S_front,'.')
+plt.axhline(y=bucket_Li2S.thickness)
+plt.legend(["back","front"])
 
 plt.show()
