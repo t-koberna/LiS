@@ -17,6 +17,8 @@ class bucket:
         self.species = species_name           # holds a string with the species name (maybe don't need this)
         self.mv = molecular_volume            # constant molecular volume [m^3/mol]
         self.thickness = bucket_thickness     # r_max - r_min for the bucket [m]
+        self.history = 0
+        self.front = 0
         
 class Index_start:
     '''
@@ -91,7 +93,8 @@ def volume_fraction(vol_0,bucket_S8,n_particles_S8,bucket_Li2S,n_particles_Li2S)
     epsilon_eltye = 1 - epsilon_S8 - epsilon_Li2S
     return [epsilon_eltye, epsilon_S8, epsilon_Li2S]
 
-def particle_flux(bucket, nuc_rate_per_area, grow_rate_per_area, n_particles, leading_bookmark, trailing_bookmark, area_carbon):
+def particle_flux(bucket, nuc_rate_per_area, grow_rate_per_area, n_particles, 
+                  leading_bookmark, trailing_bookmark, area_carbon):
     s_grow_rates = [0]*bucket.n # the growth rate for each bucket [events/s]
     area = [0]*bucket.n # find the area of each bucket assuming all particles have an average radius [m^2]
     Np_flux = np.zeros(bucket.n) # the change in the number of particles for each bucket
@@ -118,13 +121,42 @@ def particle_flux(bucket, nuc_rate_per_area, grow_rate_per_area, n_particles, le
             #flux_factor[indx_bm_trailing] = bucket.thickness/(bucket.thickness - r_bm_trailing)
             #flux_factor[indx_bm_trailing] = 1
     
+    n_part = np.copy(n_particles)
+    
+    if trailing_bookmark >0:
+        #print(indx_bm_leading)
+        #print(n_particles[indx_bm_trailing:indx_bm_leading+1] )
+        #if bucket.species == "S_8":
+            #print(snap_shot)
+        #if r_bm_trailing < 0.5*bucket.thickness:
+        
+        n_part[indx_bm_trailing+1:indx_bm_leading+2] = bucket.history[1:(indx_bm_leading-indx_bm_trailing)+2]
+        if 1-(leading_bookmark % bucket.thickness)<bucket.front:
+            n_part[indx_bm_leading+1] = n_part[indx_bm_leading]
+            flux_factor[indx_bm_leading] = 1
+            flux_factor[indx_bm_leading+1] = 1
+        #n_particles[indx_bm_trailing+1:indx_bm_leading+1] = bucket.history[1:(indx_bm_leading-indx_bm_trailing)+1]
+        #n_particles[indx_bm_trailing+1] = n_particles[indx_bm_trailing+1]
+        #else:
+            #n_particles[indx_bm_trailing+1:indx_bm_leading+1] = bucket.history[0:(indx_bm_leading-indx_bm_trailing)]
+        #if r_bm_trailing + bucket.front > bucket.thickness:
+            #flux_factor[indx_bm_leading] = 1
+        
+
+    fraction_moving = drdt/bucket.thickness
+
     if grow_rate_per_area > 0: 
-        Np_flux[0] = nuc_rate_per_area*area_carbon - drdt/bucket.thickness*n_particles[0]*flux_factor[0]
+        #Np_flux[0] = nuc_rate_per_area*area_carbon - fraction_moving*n_particles[0]*flux_factor[0]
+        Np_flux[0] = nuc_rate_per_area*area_carbon - fraction_moving*n_part[0]*flux_factor[0]
         #print(drdt/bucket.thickness*n_particles[1]*flux_factor[0])
-        print(n_particles[1]*flux_factor[0])
-        Np_flux[1:-1] = (drdt/bucket.thickness*np.multiply(n_particles[:-2],flux_factor[:-2]) 
-                         - drdt/bucket.thickness*np.multiply(n_particles[1:-1],flux_factor[1:-1]) )
-        Np_flux[-1] = drdt/bucket.thickness*n_particles[-2]*flux_factor[-2]
+        
+        '''
+        Np_flux[1:-1] = (fraction_moving*np.multiply(n_particles[:-2],flux_factor[:-2]) 
+                         - fraction_moving*np.multiply(n_particles[1:-1],flux_factor[1:-1]) )
+        '''
+        Np_flux[1:-1] = (fraction_moving*np.multiply(n_part[:-2],flux_factor[:-2]) 
+                         - fraction_moving*np.multiply(n_part[1:-1],flux_factor[1:-1]) )
+        Np_flux[-1] = fraction_moving*n_particles[-2]*flux_factor[-2]
         #if indx_bm_leading > 0:
             #Np_flux[indx_bm_leading]=Np_flux[indx_bm_leading-1]
         #if r_bm_trailing > 0:
@@ -179,8 +211,9 @@ def residual(t,SV,SV_dot,resid,user_data):
     bm_Li2S_back = SV[SV_index.bm_Li2S_back]
 
     # Used to cut off nucleation
-    if t>15:
+    if t>2:
         s_k_nuc_S8_per_area = 0
+    
     if t>15:
         s_k_nuc_Li2S_per_area = 0 
     
@@ -231,7 +264,8 @@ def residual(t,SV,SV_dot,resid,user_data):
     #print(t)
     #if t>100:
 
-def residual_ivp(t,SV, s_k_nuc_S8_per_area,s_k_grow_S8_per_area,s_k_nuc_Li2S_per_area,s_k_grow_Li2S_per_area , SV_index, bucket_S8, bucket_Li2S,area_carbon_0):
+def residual_ivp(t,SV, s_k_nuc_S8_per_area,s_k_grow_S8_per_area,s_k_nuc_Li2S_per_area,s_k_grow_Li2S_per_area , 
+                 SV_index, bucket_S8, bucket_Li2S, area_carbon_0):
         # read state variable values    
     Np_S8 = SV[:SV_index.S8]
     Np_Li2S = SV[SV_index.S8:SV_index.Li2S]
@@ -244,13 +278,30 @@ def residual_ivp(t,SV, s_k_nuc_S8_per_area,s_k_grow_S8_per_area,s_k_nuc_Li2S_per
     bm_Li2S_front = SV[SV_index.bm_Li2S_front]
     bm_Li2S_back = SV[SV_index.bm_Li2S_back]
     dSVdt = np.zeros_like(SV)
-    
+  
     # Used to cut off nucleation
-    if t>20:
+    if t>2:
         s_k_nuc_S8_per_area = 0
-    if t>20:
-        s_k_nuc_Li2S_per_area = 0 
-    
+    else:
+        s_k_nuc_S8_per_area = s_k_nuc_S8_per_area*np.exp(-0.5*(t-0.75)**2)
+        bucket_S8.history = Np_S8
+        bucket_S8.front = bm_S8_front % bucket_S8.thickness
+    if t>2:
+        s_k_nuc_Li2S_per_area = 0
+    else:
+        bucket_Li2S.history = Np_Li2S
+        bucket_Li2S.front = bm_Li2S_front % bucket_Li2S.thickness
+
+    #if bm_S8_back == 0:
+        #bucket_S8.history = SV[:int(bm_S8_front/bucket_S8.thickness)+1]
+    #print(t)
+    #print(bucket_S8.history)
+    #print("bu")
+    #print(int(bm_S8_front/bucket_S8.thickness))
+    #print("L")
+    #print(int(bm_Li2S_front/bucket_Li2S.thickness))
+    #print(Np_Li2S[:int(bm_Li2S_front/bucket_Li2S.thickness)+1])
+   
     # simplifying case where nuclation rate is constant    
     a_carbon = area_carbon_0 #area_carbon(bucket_S8,Np_S8,bucket_Li2S,Np_Li2S,area_carbon_0)
     
