@@ -36,7 +36,7 @@ S8_limit = 2e40#1e-3 # The maximum number of particles that can be in the final 
 Li2S_limit = 2e40#1e-3 # The maximum number of particles that can be in the final bucket for Li_2S
 
 ## Operating Conditions
-t_sim_max = [8] # the maximum time the battery will be held at each current [s]
+t_sim_max = [4] # the maximum time the battery will be held at each current [s]
 T = 298.15 # standard temperature [K]
 
 ## Material Properties
@@ -130,8 +130,8 @@ algvars = []
 grow_rate_per_area = 1e-4
 nuc_rate_per_area = 10e-1 
 params = [nuc_rate_per_area,grow_rate_per_area,nuc_rate_per_area,grow_rate_per_area , SV_index, bucket_S8, bucket_Li2S,area_carbon_0]
-options =  {'user_data':params, 'rtol':1e-10,
-        'atol':1e-10, 'algebraic_vars_idx':algvars, 'first_step_size':1e-15,'rootfn':terminate_check,'nr_rootfns':num_roots}
+options =  {'user_data':params, 'rtol':1e-12,
+        'atol':1e-12, 'algebraic_vars_idx':algvars, 'first_step_size':1e-15,'rootfn':terminate_check,'nr_rootfns':num_roots}
             # , 'compute_initcond':'yp0', 'max_steps':10000}
 solver = dae('ida', residual, **options)
 

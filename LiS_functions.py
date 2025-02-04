@@ -159,10 +159,10 @@ def residual(t,SV,SV_dot,resid,user_data):
     bm_Li2S_back = SV[SV_index.bm_Li2S_back]
 
     # Used to cut off nucleation
-    if t>2:
+    if t>1:
         s_k_nuc_S8_per_area = 0
-    else:
-        s_k_nuc_S8_per_area = s_k_nuc_S8_per_area*np.exp(-0.5*(t-0.75)**2)
+    #else:
+        #s_k_nuc_S8_per_area = s_k_nuc_S8_per_area*np.exp(-0.85*(t-0.25)**2)*2
     if t>1:
         s_k_nuc_Li2S_per_area = 0 
     
@@ -247,9 +247,8 @@ def plot_results(plot_flags, time, N_S8, N_Li2S, bucket_S8, bucket_Li2S,
         
         [Epsilon_eltye[i], Epsilon_S8[i] ,Epsilon_Li2S[i]] = volume_fraction(V_elyte_0,bucket_S8,nS8,bucket_Li2S,nLi2S)
     
-    cmap = mP.colormaps['plasma']
-    mP.rcParams['mathtext.fontset'] = 'cm'
-    plt.rcParams['xtick.top'] = plt.rcParams['ytick.right'] = True
+    #mP.rcParams['mathtext.fontset'] = 'cm'
+    #plt.rcParams['xtick.top'] = plt.rcParams['ytick.right'] = True
 
     # Number of particles
     if num_particles_bin == 1:
@@ -371,10 +370,14 @@ def plot_results(plot_flags, time, N_S8, N_Li2S, bucket_S8, bucket_Li2S,
         #plt.rcParams['text.usetex'] = True
         fig8 = plt.figure(num=7)#,dpi=250)
 
-        plot_percs = np.array([0.125,0.25,0.5,0.625,0.75,0.875,1])
+        #plot_percs = np.array([0.125,0.25,0.5,0.625,0.75,0.875,1])
         time_frac = np.multiply(plot_percs,time_end)
+        #plt_clrs = [cmap(0.1),cmap(0.25),cmap(0.35),cmap(0.45),cmap(0.65),cmap(0.85),cmap(1)]
+
+        plot_percs = np.array([0.2,0.4,0.6,0.8])
+        plot_percs = np.array([0.125,0.25,0.5,1])
         time_ind = np.multiply(plot_percs,len(time))
-        plt_clrs = [cmap(0.1),cmap(0.25),cmap(0.35),cmap(0.45),cmap(0.65),cmap(0.85),cmap(1)]
+        plt_clrs = [cmap(0.1),cmap(0.35),cmap(0.55),cmap(0.75)]
 
         plt_counter = 0
         for el in enumerate(time_ind):
@@ -386,6 +389,11 @@ def plot_results(plot_flags, time, N_S8, N_Li2S, bucket_S8, bucket_Li2S,
                     plt_counter = plt_counter + 1
         
         ax = plt.gca() 
+        plt.yticks(fontsize = 12)
+        plt.xticks(np.linspace(0,0.6,7)*1e-7,['0','0.1','0.2','0.3','0.4','0.5','0.6'], fontsize = 12 )
+        plt.xlim([0,0.505*1e-7])
+        plt.ylabel("Percent of Particles",fontsize = 16)
+        plt.xlabel(r"Particle radius [$\mu$m]",fontsize = 16)
         #ax.set_box_aspect(1)
         plt.tight_layout()
     
