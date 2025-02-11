@@ -10,7 +10,7 @@ import datetime
 import os
 import pandas as pd
 
-save_data = 1 # saves the data to a folder if this is a 1
+save_data = 0 # saves the data to a folder if this is a 1
 
 # Anode is on the left at x=0 and Cathode is on the right
 # Li -> Li+ + e- (reaction at the anode)
@@ -32,8 +32,8 @@ USER INPUTS
 # I will add to theses later, for now the only termination checks
 # are if one of the buckets has a negative value for the number of particles, or if the final bucket gets too full
 # maybe add a cuttoff for the concetration of a species in the elyte
-S8_limit = 2e40#1e-3 # The maximum number of particles that can be in the final bucket for S_8
-Li2S_limit = 2e40#1e-3 # The maximum number of particles that can be in the final bucket for Li_2S
+S8_limit = 2e10 # The maximum number of particles that can be in the final bucket for S_8
+Li2S_limit = 2e10 # The maximum number of particles that can be in the final bucket for Li_2S
 
 ## Operating Conditions
 t_sim_max = [4] # the maximum time the battery will be held at each current [s]
@@ -67,7 +67,8 @@ Parameters
 Epsilon_S8_0 = 0 # Initial volume fraction of S_8 in the cathode [-]
 Epsilon_Li2S_0 = 0 # Initial volume fraction of Li_2S in the cathode [-]
 Epsilon_eltye_0 = 1 - Epsilon_S8_0 - Epsilon_Li2S_0 # Initial volume fraction of electrolyte [-]
-area_carbon_0 = 10**-4 # inital area of carbon (this is the area where nucleation happens) [m^2]
+# I set the initial area of carbon as 1 m so everything becomes per unit area
+area_carbon_0 = 1 # inital area of carbon (this is the area where nucleation happens) [m^2]
 
 h = 1e-8 # height of the tank [m] (stand in for eletrolyte thickness)
 V_elyte_0 = area_carbon_0*h # initial volume of electrolyte
@@ -130,8 +131,8 @@ algvars = []
 grow_rate_per_area = 1e-4
 nuc_rate_per_area = 10e-1 
 params = [nuc_rate_per_area,grow_rate_per_area,nuc_rate_per_area,grow_rate_per_area , SV_index, bucket_S8, bucket_Li2S,area_carbon_0]
-options =  {'user_data':params, 'rtol':1e-12,
-        'atol':1e-12, 'algebraic_vars_idx':algvars, 'first_step_size':1e-15,'rootfn':terminate_check,'nr_rootfns':num_roots}
+options =  {'user_data':params, 'rtol':1e-11,'atol':1e-11, 
+            'algebraic_vars_idx':algvars, 'first_step_size':1e-15,'rootfn':terminate_check,'nr_rootfns':num_roots}
             # , 'compute_initcond':'yp0', 'max_steps':10000}
 solver = dae('ida', residual, **options)
 
@@ -156,6 +157,8 @@ bm_Li2S_back = sim_outputs[SV_index.bm_Li2S_back]
 time = sim_outputs[-1]
 
 # Save data
+# Creates a new folder based on the time and saves the inputs for the simulation 
+# along with the values of the state variables from the solution
 if save_data == 1:
     now = datetime.datetime.now()
     # Format "YYYY-MM-DD_HH-MM-SS"

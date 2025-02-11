@@ -4,7 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from LiS_functions import bucket, plot_results
 
-folder_name = "2025-01-31_10-26-08"
+folder_name = "2025-02-11_12-57-09"
+#folder_name = "starts_end"
 
 fn_bookmarks = "bookmarks.csv"
 fn_S8 = "Num_Particles_S8.csv"
