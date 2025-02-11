@@ -5,11 +5,19 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scikits.odes import dae
-from LiS_functions import bucket, Index_start, residual_case1
+from LiS_functions import bucket, Index_start, residual, plot_results
+import datetime
+import os
+import pandas as pd
+
+save_data = 0 # saves the data to a folder if this is a 1
 
 # Anode is on the left at x=0 and Cathode is on the right
 # Li -> Li+ + e- (reaction at the anode)
 # 1/2S_8 + e- -> 1/2S_8^2- (reaction at the cathode)
+# Currently, the model begins with all Li2S and S8 dissolved in the electroltye, 
+# then tracks the deposition of Li2S an S8 on a planer carbon assuming constant 
+# rates for both nucleation and growth 
 
 '''
 Constants
@@ -21,109 +29,89 @@ R = 8.3145 #Universal gas constant [J/mol-K]
 USER INPUTS
 '''
 ## Simulation parameters
-V_min = -10 # Minimum cell voltage at which to terminate the integration [V]
-V_max = 10 # Maximum cell voltage at which to terminate the integration [V]
-X_Li_min = 0.01 # Lithium mole fraction in an electrode at which to terminate the integration [-]
-X_Li_max = 0.99 # Lithium mole fraction in an electrode at which to terminate the integration [-]
+# I will add to theses later, for now the only termination checks
+# are if one of the buckets has a negative value for the number of particles, or if the final bucket gets too full
+# maybe add a cuttoff for the concetration of a species in the elyte
+S8_limit = 2e10 # The maximum number of particles that can be in the final bucket for S_8
+Li2S_limit = 2e10 # The maximum number of particles that can be in the final bucket for Li_2S
 
 ## Operating Conditions
-# If there is more than one external current the simulation will run back to back
-i_external = np.array([100]) # external current into the Anode [A/m^2] 
-t_sim_max = [1] # the maximum time the battery will be held at each current [s]
+t_sim_max = [4] # the maximum time the battery will be held at each current [s]
 T = 298.15 # standard temperature [K]
 
 ## Material Properties
 rho_C = 2260 # density of carbon [kg/m^3]
 rho_S8 = 2070 # density of Sulfur (S8) [kg/m^3]
+rho_Li2S = 1660 # density of Li_2S [kg/m^3]
+
+MW_S8 = 0.25652  # molecular weight [kg/mol]
+MW_Li2S = 0.045947 # molecular weight [kg/mol]
+
+mv_S8 = MW_S8/rho_S8 # constant molar volume S_8 [m^3/mol]
+mv_Li2S = MW_Li2S/rho_Li2S # constant molar volume Li_2S [m^3/mol]
 
 ## Initial Values
-Phi_dl_0_an = -0.64 # initial value for Phi_dl for the Anode [V]
-Phi_dl_0_ca = 0.34 #0.321 # initial value for Phi_dl for the Cathode [V]
-X_S8_0_ca = 0.6 # Initial Mole Fraction of the Cathode for Sulfur (S_8) [-]
-C_Li_plus = 1000 # Concentration of Li+ in the Electrolyte [mol/m^3] 
 C_std = 1000 # Standard Concentration [mol/m^3] (same as 1 M)
-m_S8_0 = 0.1 # Initial mass of Sulfur [kg/m^2]
-w_S8_0 = 0.2 # Initial weight percent of the Sulfur (S_8) Phase [kg_C/kg_total]
-w_C_0 = 0.2 # Initial weight percent of the Carbon Phase [kg_C/kg_total]
+mol_S8_elyt_0 = 5e-5 # Initial moles of S_8 in the electrolyte [mol/m^3]
+mol_Li2S_elyt_0 = 5e-5 # Initial moles of Li_2S in the electrolyte [mol/m^3]
 
 ## Material parameters: (Replaced by Cantera?)
-sigma_sep = 1.2 # Ionic conductivity for the seperator [1/m-ohm] (this is concentration dependent but it is constant for now)
-# Standard Gibbs free energy of formation [J/mol] (need to update)
-G_S8 = 40000 
-G_S8_min = 40000 
-G_Li = -230000
-G_Li_plus = -293300
-# Standard entropy [J/mol-K]
-S_S8 = 4
-S_S8_min = 5
-S_Li = -11.2
-S_Li_plus = 49.7
-# Microstructure
-t_sep =  1e-5 # thickness of the seperator [m]
-n_y_sep = 4 # number of nodes inside the seperator
-Delta_y_an = 50*10**-6 # Anode thickness [m]
-#r_an = 5*10**-6 # Anode particle radius [m]
-#n_r_an = 5 # Number of radial nodes in the anode
-Delta_y_ca = 50*10**-6 # Cathode thickness [m]
-r_ca = 3*10**-6 # Cathode particle radius [m]
-n_r_ca = 5 # Number of radial nodes in the cathode
 
 '''
 Parameters
 '''
-Epsilon_C =  w_C_0*m_S8_0/w_S8_0/rho_C/Delta_y_ca# Volume fraction of the carbon in the cathode [-] (will not change)
-Epsilon_S8_0 = m_S8_0/rho_S8/Delta_y_ca # Initial volume fraction of S_8 in the cathode [-]
-Epsilon_eltye = 1 - Epsilon_C - Epsilon_S8_0 # Initial volume fraction of electrolyte in the cathode [-]
 
 ## Geometry
-# Anode
+# I do not track the volume fraction for carbon because it is planer and inert
+# Later I will track the volume fraction of the anode since Lithum disolves
+Epsilon_S8_0 = 0 # Initial volume fraction of S_8 in the cathode [-]
+Epsilon_Li2S_0 = 0 # Initial volume fraction of Li_2S in the cathode [-]
+Epsilon_eltye_0 = 1 - Epsilon_S8_0 - Epsilon_Li2S_0 # Initial volume fraction of electrolyte [-]
+# I set the initial area of carbon as 1 m so everything becomes per unit area
+area_carbon_0 = 1 # inital area of carbon (this is the area where nucleation happens) [m^2]
 
-
-# Cathode
-Vol_ca = (4*np.pi/3)*r_ca**3 # Volume of a single anode particle [m^3]
-A_surf_ca = 4*np.pi*r_ca**2 # geometric surface area of a single anode particle [m^2]
-A_s_ca = 3/r_ca # ratio of surface area to volume for the graphite anode [1/m]
-#replace equation
-#A_sg_ca = Epsilon_C*Delta_y_ca*A_s_ca # interface surface area per geometric surface area [m^2_interface/m^2_geometric]\
-
-'''
-Above are general inputs I will use later on, for now I am starting with a reduced case
-'''
-
-h = 1e-4 # height of the tank [m] (not used in case 1)
+h = 1e-8 # height of the tank [m] (stand in for eletrolyte thickness)
+V_elyte_0 = area_carbon_0*h # initial volume of electrolyte
 
 # Each of the buckets are the same size, with the exception of the final bucket which will extend to infinity
-n_bucket_S8 = 4 # number of buckets for S8 [-]
-n_bucket_Li2S = 5 # number of buckets for Li2S [-]
+n_bucket_S8 = 150 # number of buckets for S8 [-]
+n_bucket_Li2S = 50 # number of buckets for Li2S [-]
 
-t_bucket_S8 = 1e-8 # the radius range (aka thickness) of each bucket for S8 [m]
-t_bucket_Li2S = 2e-8 # the radius range (aka thickness) of each bucket for Li2S [m]
+t_bucket_S8 = 8e-10 # the radius range (aka thickness) of each bucket for S8 [m]
+t_bucket_Li2S = 5e-6 # the radius range (aka thickness) of each bucket for Li2S [m]
 
-bucket_S8 = bucket(n_bucket_S8,t_bucket_S8,"S_8")
-bucket_Li2S = bucket(n_bucket_Li2S,t_bucket_Li2S,"Li_2S")
+bucket_S8 = bucket(n_bucket_S8,t_bucket_S8,mv_S8,"S_8")
+bucket_Li2S = bucket(n_bucket_Li2S,t_bucket_Li2S,mv_Li2S,"Li_2S")
 
-SV_index = Index_start(n_bucket_S8,n_bucket_Li2S)
+SV_index = Index_start(n_bucket_S8,n_bucket_Li2S) # Holds the pointers for the SV vector
 
 '''
 Initialize the SV vector
 '''
-sim_inputs = np.zeros(n_bucket_S8 + n_bucket_Li2S)
-print(sim_inputs[:SV_index.S8])
-# I put S8 on top of Li2S, everything starts at zero for now
+sim_inputs = np.zeros(n_bucket_S8 + n_bucket_Li2S + 2 + 2 + 4)
+
+# I put S8 on top of Li2S. All buckets everything start with zero particles
 sim_inputs[:SV_index.S8] = np.zeros(n_bucket_S8)
 sim_inputs[SV_index.S8:SV_index.Li2S] = np.zeros(n_bucket_Li2S)
+sim_inputs[SV_index.mol_S8_ca] = 0
+sim_inputs[SV_index.mol_Li2S_ca] = 0
+sim_inputs[SV_index.mol_S8_elyte] = mol_S8_elyt_0 
+sim_inputs[SV_index.mol_Li2S_elyte] = mol_Li2S_elyt_0 
+sim_inputs[SV_index.bm_S8_front] = 0 
+sim_inputs[SV_index.bm_S8_back] = 0 
+sim_inputs[SV_index.bm_Li2S_front] = 0 
+sim_inputs[SV_index.bm_Li2S_back] = 0
 
 time_start = 0 # Initial time [s]
 time_end = t_sim_max[0] #Final time [s]
-times = np.linspace(time_start,time_end,1000)
+times = np.linspace(time_start,time_end,1001)
 
 '''
 Integration
 '''
-S8_limit = 1e-3
-Li2S_limit = 1e-3
 # Integration Limits 
-n_roots = 3 # number of termination checks
+# will add concentration and volatage checks later on
+num_roots = 3 # number of termination checks
 def terminate_check(t,SV,SV_dot,return_val,user_data):
     #checks the number of particles in the largest boxes
     return_val[0] = SV[SV_index.S8-1] - S8_limit
@@ -140,11 +128,13 @@ algvars = []
 
 # I am not sure if these will be params or if the residual can call cantera directly
 #[s_k_nuc_S8,s_k_grow_S8,s_k_nuc_Li2S,s_k_grow_Li2S] are the first 4 terms in params [mol/m^3]
-params = [0,0,0.008,0.2, SV_index, bucket_S8, bucket_Li2S]
-options =  {'user_data':params, 'rtol':1e-8,
-        'atol':1e-12, 'algebraic_vars_idx':algvars, 'first_step_size':1e-15,'rootfn':terminate_check,'nr_rootfns':n_roots}
+grow_rate_per_area = 1e-4
+nuc_rate_per_area = 10e-1 
+params = [nuc_rate_per_area,grow_rate_per_area,nuc_rate_per_area,grow_rate_per_area , SV_index, bucket_S8, bucket_Li2S,area_carbon_0]
+options =  {'user_data':params, 'rtol':1e-11,'atol':1e-11, 
+            'algebraic_vars_idx':algvars, 'first_step_size':1e-15,'rootfn':terminate_check,'nr_rootfns':num_roots}
             # , 'compute_initcond':'yp0', 'max_steps':10000}
-solver = dae('ida', residual_case1, **options)
+solver = dae('ida', residual, **options)
 
 SV_0 = sim_inputs
 SV_dot_0  = np.zeros_like(SV_0)
@@ -152,34 +142,82 @@ solution = solver.solve(times, SV_0, SV_dot_0)
 sim_outputs =np.stack((*np.transpose(solution.values.y), solution.values.t))
 
 '''
-Post Processing
+Post Processing          
 '''
 N_S8  = sim_outputs[:SV_index.S8]
 N_Li2S  = sim_outputs[SV_index.S8:SV_index.Li2S] 
+mol_S8_ca = sim_outputs[SV_index.mol_S8_ca]
+mol_Li2S_ca = sim_outputs[SV_index.mol_Li2S_ca]
+mol_S8_elyt = sim_outputs[SV_index.mol_S8_elyte]
+mol_Li2S_elyt = sim_outputs[SV_index.mol_Li2S_elyte]
+bm_S8_front = sim_outputs[SV_index.bm_S8_front]
+bm_S8_back = sim_outputs[SV_index.bm_S8_back]
+bm_Li2S_front = sim_outputs[SV_index.bm_Li2S_front]
+bm_Li2S_back = sim_outputs[SV_index.bm_Li2S_back]
 time = sim_outputs[-1]
 
-####RGHUIJPOUBVGYCF VBUIONMUVGYCBIOMP< Change this only for error checking
-sim_outputs =np.stack((*np.transpose(solution.values.yp), solution.values.t))
-N_S8  = sim_outputs[:SV_index.S8]
+# Save data
+# Creates a new folder based on the time and saves the inputs for the simulation 
+# along with the values of the state variables from the solution
+if save_data == 1:
+    now = datetime.datetime.now()
+    # Format "YYYY-MM-DD_HH-MM-SS"
+    folder_name = now.strftime("%Y-%m-%d_%H-%M-%S")
+    os.makedirs(folder_name, exist_ok=True)
+    fn_bookmarks = "bookmarks.csv"
+    fn_S8 = "Num_Particles_S8.csv"
+    fn_Li2S = "Num_Particles_Li2S.csv"
+    fn_inputs = "inputs.csv"
+    fn_moles = "moles.csv"
+    fp_bookmarks = f"{folder_name}/{fn_bookmarks}"
+    fp_S8 = f"{folder_name}/{fn_S8}"
+    fp_Li2S = f"{folder_name}/{fn_Li2S}"
+    fp_inputs = f"{folder_name}/{fn_inputs}"
+    fp_moles = f"{folder_name}/{fn_moles}"
+    
+    df_bookmarks = ( pd.DataFrame({'time': time,
+        'Bookmark front S8' : bm_S8_front, 'Bookmark back S8' : bm_S8_back,
+        'Bookmark front Li2S' : bm_Li2S_front, 'Bookmark back Li2S' : bm_Li2S_back}))
+    df_bookmarks.to_csv(fp_bookmarks, index=False)
+    df_S8  = pd.DataFrame()
+    for column, ele in enumerate(N_S8):
+        df_S8[column+1] = ele
+    df_S8.to_csv(fp_S8, index=False)
+    df_Li2S  = pd.DataFrame()
+    for column, ele in enumerate(N_Li2S):
+        df_Li2S[column+1] = ele
+    df_Li2S.to_csv(fp_Li2S, index=False)
+    df_moles = ( pd.DataFrame({'mol_S8_ca' : mol_S8_ca, 'mol_Li2S_ca' : mol_Li2S_ca,
+        'mol_S8_elyt' : mol_S8_elyt, 'mol_Li2S_elyt' : mol_Li2S_elyt}))
+    df_moles.to_csv(fp_moles, index=False)
+    
+    inputs= ([S8_limit, Li2S_limit,Epsilon_S8_0, Epsilon_Li2S_0, Epsilon_eltye_0, area_carbon_0,
+        h, V_elyte_0, t_bucket_S8, t_bucket_Li2S, mol_S8_elyt_0, mol_Li2S_elyt_0, mv_S8, mv_Li2S])
+    inputs_names = (['S8_limit', 'Li2S_limit','Epsilon_S8_0', 'Epsilon_Li2S_0', 'Epsilon_eltye_0', 'area_carbon_0',
+        'h', 'V_elyte_0', 't_bucket_S8', 't_bucket_Li2S', 'mol_S8_elyt_0', 'mol_Li2S_elyt_0',  'mv_S8', 'mv_Li2S'])
+    df_inputs = pd.DataFrame([inputs], columns=[inputs_names])
+    df_inputs.to_csv(fp_inputs, index=False)
+else:
+    folder_name = None
 
-#print(N_Li2S)
 '''
 plot the results 
 '''
+# pick what plots to display (1 yes, anything else no)
+num_particles_bin = 1
+cs_area = 0
+total_particles = 1
+conc_and_moles = 1
+vol_frac = 0
+time_stamps_bins = 1
+bookmark_movement = 1
 
-fig1, (ax1, ax2) = plt.subplots(2)
-for ind, ele in enumerate(N_S8):
-    ax1.plot(time,ele,label=str(ind))
-for ind, ele in enumerate(N_Li2S):
-    ax2.plot(time,ele,label=str(ind))
-ax1.legend(ncol=1, bbox_to_anchor=(1, 0.5),loc = 'center left')
-ax1.set_title(r"S$_8$")
-ax1.set_xlabel("time [s]")
-ax1.set_ylabel("Number of Particles [-]")
-ax2.legend(ncol=1, bbox_to_anchor=(1, 0.5),loc = 'center left')
-ax2.set_title(r"Li$_2$S")
-ax2.set_xlabel("time [s]")
-ax2.set_ylabel("Number of Particles [-]")
-fig1.tight_layout()
+plot_flags = [num_particles_bin, cs_area, total_particles, conc_and_moles, vol_frac, time_stamps_bins, bookmark_movement]
+
+plot_results(plot_flags, time, N_S8, N_Li2S, bucket_S8, bucket_Li2S, 
+        mol_S8_elyt, mol_Li2S_elyt, mol_S8_ca, mol_Li2S_ca,
+        bm_S8_front, bm_S8_back, bm_Li2S_front, bm_Li2S_back,
+        h, area_carbon_0, V_elyte_0, time_end, folder_name)
 
 plt.show()
+
