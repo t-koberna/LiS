@@ -6,8 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 import matplotlib as mP
-from scikits.odes import dae
-from LiS_functions import bucket, Index_start, residual_ivp, residual, plot_results
+from LiS_functions import bucket, Index_start, residual, residual, plot_results
 import datetime
 import os
 import pandas as pd
@@ -132,26 +131,12 @@ grow_rate_per_area = 1e-4
 nuc_rate_per_area = 10e-1 
 params = [nuc_rate_per_area,grow_rate_per_area,nuc_rate_per_area,grow_rate_per_area , SV_index, bucket_S8, bucket_Li2S,area_carbon_0]
 
-
-if ivp == True:
-    t_span = [time_start,time_end]
-    min_time_intervals = 100
-    max_t_step = time_end/min_time_intervals
-    solution = (solve_ivp(residual_ivp,t_span,sim_inputs,method='BDF',
-                args=[params], rtol = 1e-8,atol = 1e-10, max_step = max_t_step))
-    sim_outputs =np.stack((*(solution.y), solution.t))
-else:
-    times = np.linspace(time_start,time_end,1001)
-    algvars = []
-    options =  {'user_data':params, 'rtol':1e-11,'atol':1e-11, 
-                'algebraic_vars_idx':algvars, 'first_step_size':1e-15,'rootfn':terminate_check,'nr_rootfns':num_roots}
-                # , 'compute_initcond':'yp0', 'max_steps':10000}
-    solver = dae('ida', residual, **options)
-    SV_0 = sim_inputs
-    SV_dot_0  = np.zeros_like(SV_0)
-    solution = solver.solve(times, SV_0, SV_dot_0)
-    sim_outputs =np.stack((*np.transpose(solution.values.y), solution.values.t))
-
+t_span = [time_start,time_end]
+min_time_intervals = 100
+max_t_step = time_end/min_time_intervals
+solution = (solve_ivp(residual,t_span,sim_inputs,method='BDF',
+            args=[params], rtol = 1e-8,atol = 1e-10, max_step = max_t_step))
+sim_outputs =np.stack((*(solution.y), solution.t))
 
 '''
 Post Processing          

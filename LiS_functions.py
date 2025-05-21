@@ -125,7 +125,7 @@ def particle_flux(bucket, nuc_rate_per_area, leading_bookmark, area_carbon):
 
     return Np_flux
 
-def residual_ivp(t,SV,user_data):
+def residual(t,SV,user_data):
     # can this file call the cantera directly or will that be in the user data?
     s_k_nuc_S8_per_area = user_data[0]
     s_k_grow_S8_per_area = user_data[1]
@@ -145,7 +145,7 @@ def residual_ivp(t,SV,user_data):
     mol_Li2S_elyt = SV[SV_index.mol_Li2S_elyte]
     bm_S8_front = SV[SV_index.bm_S8_front]
     bm_Li2S_front = SV[SV_index.bm_Li2S_front]
-    resid = np.zeros_like(SV)
+    dSVdt = np.zeros_like(SV)
 
     # update r_avg and r_min
     #bucket_S8 = update_r_avg(bucket_S8, bm_S8_front)
@@ -168,95 +168,29 @@ def residual_ivp(t,SV,user_data):
     # (starts at the index of the previous species, ends at one less than the index of the current species)
     
     # S8
-    resid[:SV_index.S8] = Np_flux_S8
+    dSVdt[:SV_index.S8] = Np_flux_S8
 
     # Li2S   
-    resid[SV_index.S8:SV_index.Li2S] = Np_flux_Li2S
+    dSVdt[SV_index.S8:SV_index.Li2S] = Np_flux_Li2S
 
     # Concentrations In the electrolyte. Surface area is twice the cross sectional area
     surface_area_S8 = 2*cs_area_phase(bucket_S8,Np_S8) 
     surface_area_Li2S = 2*cs_area_phase(bucket_Li2S,Np_Li2S)
     
     # moles of Li2S and S8. 
-    resid[SV_index.mol_S8_ca] =  s_k_nuc_S8_per_area*a_carbon + surface_area_S8*s_k_grow_S8_per_area
-    resid[SV_index.mol_Li2S_ca] =   s_k_nuc_Li2S_per_area*a_carbon + surface_area_Li2S*s_k_grow_Li2S_per_area
+    dSVdt[SV_index.mol_S8_ca] =  s_k_nuc_S8_per_area*a_carbon + surface_area_S8*s_k_grow_S8_per_area
+    dSVdt[SV_index.mol_Li2S_ca] =   s_k_nuc_Li2S_per_area*a_carbon + surface_area_Li2S*s_k_grow_Li2S_per_area
     
-    resid[SV_index.mol_S8_elyte] = -s_k_nuc_S8_per_area*a_carbon - surface_area_S8*s_k_grow_S8_per_area
-    resid[SV_index.mol_Li2S_elyte] = -s_k_nuc_Li2S_per_area*a_carbon - surface_area_Li2S*s_k_grow_Li2S_per_area
-    
-    # The leading bookmarks always move
-    drdt_Li2S = s_k_grow_Li2S_per_area*bucket_Li2S.mv
-    drdt_S8 = s_k_grow_S8_per_area*bucket_S8.mv 
-    # I assume that the process starts with no particles deposited
-    resid[SV_index.bm_S8_front] = drdt_S8
-    resid[SV_index.bm_Li2S_front] = drdt_Li2S
-    return resid
-
-def residual(t,SV,SV_dot,resid,user_data):
-    # can this file call the cantera directly or will that be in the user data?
-    s_k_nuc_S8_per_area = user_data[0]
-    s_k_grow_S8_per_area = user_data[1]
-    s_k_nuc_Li2S_per_area = user_data[2]
-    s_k_grow_Li2S_per_area = user_data[3]
-    SV_index = user_data[4]
-    bucket_S8 = user_data[5]
-    bucket_Li2S = user_data[6]
-    area_carbon_0 = user_data[7]    
-      
-    # read state variable values    
-    Np_S8 = SV[:SV_index.S8]
-    Np_Li2S = SV[SV_index.S8:SV_index.Li2S]
-    mol_S8_ca = SV[SV_index.mol_S8_ca]
-    mol_Li2S_ca = SV[SV_index.mol_Li2S_ca]
-    mol_S8_elyt = SV[SV_index.mol_S8_elyte]
-    mol_Li2S_elyt = SV[SV_index.mol_Li2S_elyte]
-    bm_S8_front = SV[SV_index.bm_S8_front]
-    bm_Li2S_front = SV[SV_index.bm_Li2S_front]
-
-    # update r_avg and r_min
-    bucket_S8 = update_r_avg(bucket_S8, bm_S8_front)
-    bucket_Li2S = update_r_avg(bucket_Li2S, bm_Li2S_front)
-
-    # Used to cut off nucleation
-    if t>1:
-        s_k_nuc_S8_per_area = 0
-    else:
-        s_k_nuc_S8_per_area = s_k_nuc_S8_per_area*np.exp(-0.85*(t-0.25)**2)*2
-    if t>1:
-        s_k_nuc_Li2S_per_area = 0 
-    
-    a_carbon = area_carbon(bucket_S8,Np_S8,bucket_Li2S,Np_Li2S,area_carbon_0)
-    # get the particle deposition rates due to nucleation [particles/m^2]
-    Np_flux_S8 = particle_flux(bucket_S8, s_k_nuc_S8_per_area, bm_S8_front, a_carbon)
-    Np_flux_Li2S = particle_flux(bucket_Li2S, s_k_nuc_Li2S_per_area, bm_Li2S_front, a_carbon)
-    
-    ## Set residuals 
-    # (starts at the index of the previous species, ends at one less than the index of the current species)
-    
-    # S8
-    resid[:SV_index.S8] = SV_dot[:SV_index.S8] - Np_flux_S8
-
-    # Li2S   
-    resid[SV_index.S8:SV_index.Li2S] = SV_dot[SV_index.S8:SV_index.Li2S] - Np_flux_Li2S
-
-    # Concentrations In the electrolyte. Surface area is twice the cross sectional area
-    surface_area_S8 = 2*cs_area_phase(bucket_S8,Np_S8) 
-    surface_area_Li2S = 2*cs_area_phase(bucket_Li2S,Np_Li2S)
-    
-    # moles of Li2S and S8. 
-    resid[SV_index.mol_S8_ca] = SV_dot[SV_index.mol_S8_ca] - s_k_nuc_S8_per_area*a_carbon - surface_area_S8*s_k_grow_S8_per_area
-    resid[SV_index.mol_Li2S_ca] = SV_dot[SV_index.mol_Li2S_ca] - s_k_nuc_Li2S_per_area*a_carbon - surface_area_Li2S*s_k_grow_Li2S_per_area
-    
-    resid[SV_index.mol_S8_elyte] = SV_dot[SV_index.mol_S8_elyte] + s_k_nuc_S8_per_area*a_carbon + surface_area_S8*s_k_grow_S8_per_area
-    resid[SV_index.mol_Li2S_elyte] = SV_dot[SV_index.mol_Li2S_elyte] + s_k_nuc_Li2S_per_area*a_carbon + surface_area_Li2S*s_k_grow_Li2S_per_area
+    dSVdt[SV_index.mol_S8_elyte] = -s_k_nuc_S8_per_area*a_carbon - surface_area_S8*s_k_grow_S8_per_area
+    dSVdt[SV_index.mol_Li2S_elyte] = -s_k_nuc_Li2S_per_area*a_carbon - surface_area_Li2S*s_k_grow_Li2S_per_area
     
     # The leading bookmarks always move
     drdt_Li2S = s_k_grow_Li2S_per_area*bucket_Li2S.mv
     drdt_S8 = s_k_grow_S8_per_area*bucket_S8.mv 
     # I assume that the process starts with no particles deposited
-    resid[SV_index.bm_S8_front] = SV_dot[SV_index.bm_S8_front] - drdt_S8
-    resid[SV_index.bm_Li2S_front] = SV_dot[SV_index.bm_Li2S_front] - drdt_Li2S
-
+    dSVdt[SV_index.bm_S8_front] = drdt_S8
+    dSVdt[SV_index.bm_Li2S_front] = drdt_Li2S
+    return dSVdt
 
 def plot_results(plot_flags, time, N_S8, N_Li2S, bucket_S8, bucket_Li2S, 
         mol_S8_elyt, mol_Li2S_elyt, mol_S8_ca, mol_Li2S_ca,
