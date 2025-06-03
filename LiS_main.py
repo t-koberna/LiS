@@ -6,14 +6,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 import matplotlib as mP
-from LiS_functions import bucket, Index_start, residual, residual, plot_results
+from LiS_functions import bucket, Index_start, residual, plot_results
+from anode import anode
+from cathode import cathode
+from seperator import seperator
 import datetime
 import os
 import pandas as pd
+import sksundae as sun
 
 save_data = 0 # saves the data to a folder if this is a 1
-
-ivp = 1 #True # cnages if I use solve ivp or dae 
 
 # Anode is on the left at x=0 and Cathode is on the right
 # Li -> Li+ + e- (reaction at the anode)
@@ -57,6 +59,7 @@ mv_Li2S = MW_Li2S/rho_Li2S # constant molar volume Li_2S [m^3/mol]
 C_std = 1000 # Standard Concentration [mol/m^3] (same as 1 M)
 mol_S8_elyt_0 = 5e-5 # Initial moles of S_8 in the electrolyte [mol/m^3]
 mol_Li2S_elyt_0 = 5e-5 # Initial moles of Li_2S in the electrolyte [mol/m^3]
+t_anode = 1e-3 # initial thickness of the Li anode
 
 ## Material parameters: (Replaced by Cantera?)
 
@@ -89,20 +92,22 @@ t_bucket_Li2S = 8e-10 # the radius range (aka thickness) of each bucket for Li2S
 bucket_S8 = bucket(n_bucket_S8,t_bucket_S8,mv_S8,"S_8")
 bucket_Li2S = bucket(n_bucket_Li2S,t_bucket_Li2S,mv_Li2S,"Li_2S")
 
-SV_index = Index_start(n_bucket_S8,n_bucket_Li2S) # Holds the pointers for the SV vector
-
 '''
 Initialize the SV vector
 '''
-sim_inputs = np.zeros(n_bucket_S8 + n_bucket_Li2S + 2 + 2 + 2)
+an =  anode(0,0,0)
+ca = cathode(0,0,0)
+sep = seperator(0,0,0)
+
+SV_index = Index_start(an.n_variables, sep.n_variables, ca.n_variables, n_bucket_S8,n_bucket_Li2S) # Holds the pointers for the SV vector
+sim_inputs = np.zeros(SV_index.bm_Li2S_front + 1)
 
 # I put S8 on top of Li2S. All buckets everything start with zero particles
-sim_inputs[:SV_index.S8] = np.zeros(n_bucket_S8)
+sim_inputs[:SV_index.an] = an.initialize(0)
+sim_inputs[SV_index.an:SV_index.sep] = sep.initialize(0)
+sim_inputs[SV_index.sep:SV_index.ca] = ca.initialize(0)
+sim_inputs[SV_index.ca:SV_index.S8] = np.zeros(n_bucket_S8)
 sim_inputs[SV_index.S8:SV_index.Li2S] = np.zeros(n_bucket_Li2S)
-sim_inputs[SV_index.mol_S8_ca] = 0
-sim_inputs[SV_index.mol_Li2S_ca] = 0
-sim_inputs[SV_index.mol_S8_elyte] = mol_S8_elyt_0 
-sim_inputs[SV_index.mol_Li2S_elyte] = mol_Li2S_elyt_0 
 sim_inputs[SV_index.bm_S8_front] = 0 
 sim_inputs[SV_index.bm_Li2S_front] = 0 
 
@@ -114,7 +119,7 @@ Integration
 '''
 # Integration Limits 
 # will add concentration and voltage checks later on
-num_roots = 3 # number of termination checks
+num_roots = 4 # number of termination checks
 def terminate_check(t,SV,SV_dot,return_val,user_data):
     #checks the number of particles in the largest boxes
     return_val[0] = SV[SV_index.S8-1] - S8_limit
@@ -123,30 +128,38 @@ def terminate_check(t,SV,SV_dot,return_val,user_data):
     for ele in SV:
         if ele < 0:
             neg_check = 1
-    return_val[2] = neg_check 
+    return_val[2] = neg_check
     
 # I am not sure if these will be params or if the residual can call Cantera directly
 #[s_k_nuc_S8,s_k_grow_S8,s_k_nuc_Li2S,s_k_grow_Li2S] are the first 4 terms in params [mol/m^3]
 grow_rate_per_area = 1e-4
 nuc_rate_per_area = 10e-1 
-params = [nuc_rate_per_area,grow_rate_per_area,nuc_rate_per_area,grow_rate_per_area , SV_index, bucket_S8, bucket_Li2S,area_carbon_0]
+params = [nuc_rate_per_area,grow_rate_per_area,nuc_rate_per_area,grow_rate_per_area , SV_index, bucket_S8, bucket_Li2S,area_carbon_0, an, sep, ca]
 
-t_span = [time_start,time_end]
-min_time_intervals = 100
-max_t_step = time_end/min_time_intervals
-solution = (solve_ivp(residual,t_span,sim_inputs,method='BDF',
-            args=[params], rtol = 1e-8,atol = 1e-10, max_step = max_t_step))
-sim_outputs =np.stack((*(solution.y), solution.t))
+tspan = [time_start,time_end]
+algvars = []
+options =  {'userdata':params, 'rtol':1e-11,'atol':1e-11, 
+            'algebraic_idx':algvars, 'first_step':1e-15,'eventsfn':terminate_check,'num_events':num_roots}
+            # , 'compute_initcond':'yp0', 'max_steps':10000}
+solver = sun.ida.IDA(residual, **options)
+SV_0 = sim_inputs
+SV_dot_0  = np.zeros_like(SV_0)
+solution = solver.solve(tspan, SV_0, SV_dot_0)
+sim_outputs =np.stack((*np.transpose(solution.y), solution.t))
 
 '''
 Post Processing          
 '''
-N_S8  = sim_outputs[:SV_index.S8]
+N_S8  = sim_outputs[SV_index.ca:SV_index.S8]
 N_Li2S  = sim_outputs[SV_index.S8:SV_index.Li2S] 
-mol_S8_ca = sim_outputs[SV_index.mol_S8_ca]
-mol_Li2S_ca = sim_outputs[SV_index.mol_Li2S_ca]
-mol_S8_elyt = sim_outputs[SV_index.mol_S8_elyte]
-mol_Li2S_elyt = sim_outputs[SV_index.mol_Li2S_elyte]
+mol_S8_ca = 0
+mol_Li2S_ca = 0
+mol_S8_elyt = 0
+mol_Li2S_elyt = 0
+#mol_S8_ca = sim_outputs[SV_index.mol_S8_ca]
+#mol_Li2S_ca = sim_outputs[SV_index.mol_Li2S_ca]
+#mol_S8_elyt = sim_outputs[SV_index.mol_S8_elyte]
+#mol_Li2S_elyt = sim_outputs[SV_index.mol_Li2S_elyte]
 bm_S8_front = sim_outputs[SV_index.bm_S8_front]
 bm_Li2S_front = sim_outputs[SV_index.bm_Li2S_front]
 time = sim_outputs[-1]
@@ -181,9 +194,9 @@ if save_data == 1:
     for column, ele in enumerate(N_Li2S):
         df_Li2S[column+1] = ele
     df_Li2S.to_csv(fp_Li2S, index=False)
-    df_moles = ( pd.DataFrame({'mol_S8_ca' : mol_S8_ca, 'mol_Li2S_ca' : mol_Li2S_ca,
-        'mol_S8_elyt' : mol_S8_elyt, 'mol_Li2S_elyt' : mol_Li2S_elyt}))
-    df_moles.to_csv(fp_moles, index=False)
+    #df_moles = ( pd.DataFrame({'mol_S8_ca' : mol_S8_ca, 'mol_Li2S_ca' : mol_Li2S_ca,
+        #'mol_S8_elyt' : mol_S8_elyt, 'mol_Li2S_elyt' : mol_Li2S_elyt}))
+    #df_moles.to_csv(fp_moles, index=False)
     
     inputs= ([S8_limit, Li2S_limit,Epsilon_S8_0, Epsilon_Li2S_0, Epsilon_eltye_0, area_carbon_0,
         h, V_elyte_0, t_bucket_S8, t_bucket_Li2S, mol_S8_elyt_0, mol_Li2S_elyt_0, mv_S8, mv_Li2S, bucket_S8.r_min, bucket_Li2S.r_min])
@@ -200,8 +213,8 @@ plot the results
 # pick what plots to display (1 yes, anything else no)
 num_particles_bin = 1
 cs_area = 0
-total_particles = 1
-conc_and_moles = 1
+total_particles = 0
+conc_and_moles = 0
 vol_frac = 0
 time_stamps_bins = 1
 bookmark_movement = 1
