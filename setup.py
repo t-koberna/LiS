@@ -33,7 +33,10 @@ class Anode:
         self.elyte_obj = ct.Solution(path, sep.inputs['electrolyte-phase'])
         self.elyte_obj.TP = params.T, params.P
         C_k_0_elyte = [species['C_k'] for species in sep.inputs['transport']['diffusion-coefficients']]
-        self.elyte_obj.X = C_k_0_elyte # it automatically takes in the concetrations and makes them a fraction
+
+        # If I want to set concentrations not mole fractions then I need to change the thermo for the phase
+        #       meaning I could not use "ideal-condensed" anymore
+        self.elyte_obj.X = C_k_0_elyte 
         self.surf_obj = ct.Interface(path, self.inputs['surf-phase'], [self.bulk_obj, self.elyte_obj, self.conductor_obj])
         self.surf_obj.TP = params.T, params.P
         
@@ -41,9 +44,12 @@ class Seperator:
     '''
     create a class to hold the properties for the seperator object
     '''
-    def __init__(self,path, input_file):
+    def __init__(self,path, input_file, params):
         self.inputs = input_file['cell-description']['separator']
         self.elyte_obj = ct.Solution(path, self.inputs['electrolyte-phase'])
+        C_k_0_elyte = [species['C_k'] for species in self.inputs['transport']['diffusion-coefficients']]
+        self.elyte_obj.X = C_k_0_elyte 
+        self.elyte_obj.TP = params.T, params.P
 
 class Cathode:
     '''

@@ -13,16 +13,16 @@ cell-description:
     C_dl: 1.5e-1 # [F/m2]
     
   separator:
-    phi_0: 2.75 #1.0 # Initial electric potential, V
+    phi_0: 2.5 #2.825 #1.0 # Initial electric potential, V
     electrolyte-phase: 'electrolyte' # Cantera phase name
-    n_points: 4
+    n_points: 5
     thickness: 30e-6  # separator thickness, m
     transport:
       mobile-ion:  'Li+(e)' # Species name for Li+ in elyte.
       model: 'dilute-solution'
       diffusion-coefficients:
         - species: 'Li+(e)'
-          D_k: 1e-5
+          D_k: 1e-10
           C_k: 1.024e-1 # kmol_k/m^3
           name: 'Li+(e)'
           name-plot: '$\rm Li+$'
@@ -36,6 +36,16 @@ cell-description:
           C_k: 8.456e-5 # kmol_k/m^3
           name: 'Li2S(e)'
           name-plot: '$\rm Li_2S$'
+        - species: 'TEGDME(e)'
+          D_k: 1e-12
+          C_k: 1.023e-5 # kmol_k/m^3
+          name: 'TEGDME(e)'
+          name-plot: '$\rm TEGDME$'
+        - species: 'TFSI-(e)'
+          D_k: 4e-5
+          C_k: 1.024e-1 # kmol_k/m^3
+          name: 'TFSI-(e)'
+          name-plot: '$\rm TFSI-$'
    
   cathode:
     phi_0: 3.0 # Initial electric potential, V
@@ -64,10 +74,15 @@ parameters:
   simulations:
     type: 'CC_cycle' # Constant current cycling
     i_ext: 0.0 A/cm2 # the external current
-    time_max: 1 # max time for the simulation, [s]
+    time_max: 10 # max time for the simulation, [s]
     number-bins:
       Li2S: 10
       S8: 10
+  plot-species:
+    - name: 'Li+(e)'
+    #- name: 'TEGDME(e)'
+    #- name: 'S8(e)'
+
 
 # Cantera inputs:
 
@@ -149,8 +164,8 @@ phases:
 
 - name: electrolyte
   thermo: ideal-condensed
-  elements: [Li, E, S]
-  species: [Li+(e), S8(e), Li2S(e)]
+  elements: [Li, C, F, N, H, O, E, S]
+  species: [Li+(e), S8(e), Li2S(e), TEGDME(e), TFSI-(e)]
   state:
     T: 300.0
     P: 1 atm
@@ -160,6 +175,24 @@ phases:
   #reactions: [bulk-elyte-reactions]
 
 species:
+- name: TFSI-(e)
+  composition: {C: 2, F: 6, S: 2, O: 4, N: 1, E: 1}
+  thermo:
+    model: constant-cp
+    h0: 0.0 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 147.4 cm^3/mol
+- name: TEGDME(e)
+  composition: {C: 10, H: 22, O: 5}
+  thermo:
+    model: constant-cp
+    h0: 0.0 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 220.1 cm^3/mol
 - name: electron
   composition: {E: 1}
   thermo:
@@ -179,7 +212,7 @@ species:
   composition: {Li: 1, E: -1}
   thermo:
     model: constant-cp
-    h0: -278 kJ/mol
+    h0: -278 kJ/mol #-275.5 makes it reach the equalibrium voltage I expect
     s0: 0.0 J/mol/K
   equation-of-state:
     model: constant-volume
@@ -228,14 +261,14 @@ species:
 lithium-electrolyte-reactions:
 - equation: Li(b) <=> Li+(e) + electron
   id: lithium_faradaic_reaction
-  rate-constant: {A: 2.0e10, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 2.0e13, b: 0.0, Ea: 0.0}
   #rate-constant: {A: 2.0e-08, b: 0.0, Ea: 0.0}
   beta: 0.5
 
 carbon-elyte-reactions:
 - equation: 16 Li+(e) + S8(e) + 16 electron <=> 8 Li2S(e)
   id: sulfur_reduction_1
-  rate-constant: {A: 1.1e2, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e12, b: 0.0, Ea: 0.0}
   beta: 0.5
 
 lithium-sulfide-elyte-reactions:
