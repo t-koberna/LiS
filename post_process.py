@@ -3,42 +3,60 @@
 # This file saves the solution and creates plots
 import matplotlib.pyplot as plt
 import numpy as np 
+import cantera as ct
 
-def create_plots(SV_idx, sim_outputs, sep, params):
+def create_plots(SV_idx, sim_outputs, sep, anode, cathode, params):
     thickness_an, = sim_outputs[SV_idx.ptr['thickness_an']]
     phi_dl_an, = sim_outputs[SV_idx.ptr['phi_dl_an']]
     phi_elyte = sim_outputs[SV_idx.ptr['phi_elyte']]
     C_k_elyte = sim_outputs[SV_idx.ptr['C_k_elyte']]
     phi_dl_ca, = sim_outputs[SV_idx.ptr['phi_dl_ca']] 
-    phi_ca, = sim_outputs[SV_idx.ptr['phi_ca']]
     Li2S = sim_outputs[SV_idx.ptr['Li2S']]
     S8 = sim_outputs[SV_idx.ptr['S8']]
     bm_Li2S, = sim_outputs[SV_idx.ptr['bm_Li2S']]
     bm_S8, = sim_outputs[SV_idx.ptr['bm_S8']]
     time = sim_outputs[-1]
 
+    phi_ca = np.add(np.transpose(phi_elyte[-1,:]), np.transpose(phi_dl_ca))  # changed the convention so need to change this
     plot_name_elyte_species = [species['name-plot'] for species in sep.inputs['transport']['diffusion-coefficients']]
     name_elyte_species = [species['name'] for species in sep.inputs['transport']['diffusion-coefficients']]
     n_elyte_nodes = sep.inputs['n_points']
     n_elyte_species = sep.elyte_obj.n_species
 
     # Anode Double layer potential
+    R = ct.gas_constant
+    F = ct.faraday
+    T = params.T
+    n = 1
+    G_Li_ion = anode.elyte_obj.standard_gibbs_RT[0]*R*T + R*T*np.log(anode.elyte_obj.X[0])
+    G_Li = anode.bulk_obj['Li(b)'].gibbs_mole
+    Delta_G_rxn = G_Li_ion - G_Li
+    U = -Delta_G_rxn/(n*F)
+
     plt.figure()
     plt.plot(time, phi_dl_an,'.',label="model")
-    plt.hlines(y=2.791, xmin=0, xmax=time[-1], linewidth=0.5, color='k',label="hand calc eq")
+    plt.hlines(y=U, xmin=0, xmax=time[-1], linewidth=0.5, color='k',label="hand calc eq")
     plt.title("Anode Double Layer Potential")
     plt.ylabel("Voltage [V]")
     plt.xlabel("Time [s]")
     plt.legend()
 
     # Cathode double layer potential
-    '''
+
+    n = 16
+    G_Li_ion = cathode.elyte_obj.standard_gibbs_RT[0]*R*T + R*T*np.log(cathode.elyte_obj.X[0])
+    G_S8 = cathode.elyte_obj.standard_gibbs_RT[1]*R*T + R*T*np.log(cathode.elyte_obj.X[1])
+    G_Li2S = cathode.elyte_obj.standard_gibbs_RT[3]*R*T + R*T*np.log(cathode.elyte_obj.X[3])
+    Delta_G_rxn = 8*G_Li2S - 16*G_Li_ion - G_S8
+    U = -Delta_G_rxn/(n*F)
+    
     plt.figure()
+    plt.hlines(y=U, xmin=0, xmax=time[-1], linewidth=0.5, color='k',label="hand calc eq")
     plt.plot(time, phi_dl_ca,'.',label="model")
     plt.title("Cathode Double Layer Potential")
     plt.ylabel("Voltage [V]")
     plt.xlabel("Time [s]")
-    '''
+
 
     # Anode thickness
     
@@ -110,6 +128,7 @@ def create_plots(SV_idx, sim_outputs, sep, params):
     plt.xlabel("Time [s]")
     plt.legend()
 
+    
     # Li+ vs TFSI- concentration graph, right now they are the only two charged species so I can use this
     #   as another way to judge charge neutrality
     plt.figure()
@@ -117,8 +136,13 @@ def create_plots(SV_idx, sim_outputs, sep, params):
     species_idx_1 = SV_idx.elyte_species.index(plot_species_1)
     plot_species_2 = 'TFSI-(e)'
     species_idx_2 = SV_idx.elyte_species.index(plot_species_2)
+    charge_species_2 = abs(float(sep.elyte_obj[plot_species_2].charges))
+    plot_species_3 = 'S82-(e)'
+    species_idx_3 = SV_idx.elyte_species.index(plot_species_3)
+    charge_species_3 = abs(float(sep.elyte_obj[plot_species_3].charges))
     for i in range(sep.inputs['n_points']):
-        plt.plot(time, np.transpose(C_k_elyte[species_idx_2+i*sep.elyte_obj.n_species,:]),'.',label= f"node {i}")
+        total_charge_neg = np.multiply(charge_species_2,np.transpose(C_k_elyte[species_idx_2+i*sep.elyte_obj.n_species,:])) + np.multiply(charge_species_3,np.transpose(C_k_elyte[species_idx_3+i*sep.elyte_obj.n_species,:]))
+        plt.plot(time, total_charge_neg,'.',label= f"node {i}")
         plt.plot(time, np.transpose(C_k_elyte[species_idx_1+i*sep.elyte_obj.n_species,:]),'x',label= f"node {i}", markersize=3)
 
         #plt.plot(time, np.transpose(C_k_elyte[species_idx_1+i*sep.elyte_obj.n_species,:] - C_k_elyte[species_idx_2+i*sep.elyte_obj.n_species,:]),'.',label= f"node {i}")
@@ -127,6 +151,11 @@ def create_plots(SV_idx, sim_outputs, sep, params):
     plt.xlabel("Time [s]")
     plt.legend()
     
+
+    plt.figure()
+    plt.plot(time, phi_dl_an + (phi_elyte[-1,:] - phi_elyte[0,:])+phi_dl_ca)
+    plt.title("Cell potential")
+
     plt.show()
 
 def save_data(SV_idx, sim_outputs):

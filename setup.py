@@ -100,8 +100,6 @@ class SV_pointer:
         index_start = self.ptr['C_k_elyte'][-1] + 1
         self.ptr['phi_dl_ca'] = np.arange(index_start, index_start + 1)
         index_start = self.ptr['phi_dl_ca'][-1] + 1
-        self.ptr['phi_ca'] = np.arange(index_start, index_start + 1)
-        index_start = self.ptr['phi_ca'][-1] + 1
         self.ptr['Li2S'] = np.arange(index_start, index_start + params.inputs['simulations']['number-bins']['Li2S'])
         index_start = self.ptr['Li2S'][-1] + 1
         self.ptr['S8'] = np.arange(index_start, index_start + params.inputs['simulations']['number-bins']['S8'])
@@ -123,10 +121,10 @@ def Solution_Vector_0(SV_idx, sep, anode, cathode, params):
     SV_0 = np.zeros(SV_idx.num_vars)
     SV_0[SV_idx.ptr['phi_dl_an']] = sep.inputs['phi_0']
     SV_0[SV_idx.ptr['thickness_an']] = anode.inputs['thickness']
-    SV_0[SV_idx.ptr['phi_elyte']] = np.array([sep.inputs['phi_0']]*sep.inputs['n_points'])
+    # make the seperator all zeros so everything is relative to itself.
+    SV_0[SV_idx.ptr['phi_elyte']] = np.array([0]*sep.inputs['n_points']) #np.array([sep.inputs['phi_0']]*sep.inputs['n_points'])
     SV_0[SV_idx.ptr['C_k_elyte']] = C_k_0_elyte
     SV_0[SV_idx.ptr['phi_dl_ca']] = cathode.inputs['phi_0'] - sep.inputs['phi_0']
-    SV_0[SV_idx.ptr['phi_ca']] = cathode.inputs['phi_0'] # change this line to cathode.inputs once I make a cathode object
     SV_0[SV_idx.ptr['Li2S']] = np.zeros(params.inputs['simulations']['number-bins']['Li2S'])
     SV_0[SV_idx.ptr['S8']] = np.zeros(params.inputs['simulations']['number-bins']['S8'])
     SV_0[SV_idx.ptr['bm_Li2S']] = 0
