@@ -12,7 +12,7 @@ from create_residual import residual
 from post_process import create_plots
 
 # Decide if I am using algebric variables or not (I am workshopping two apraoches for the seperator)
-algebraic = 2
+algebraic = 12
 
 # Read in the yaml input file
 path = Path("Li_Sulfur.yaml")
@@ -27,7 +27,7 @@ cathode = Cathode(path, inputs, sep, params)
 '''
 # Note on equalibrium calculation, I need to know more about how the property calls work
 # The equalibrium value was working well, but not anymore and Idk why
-#print(anode.elyte_obj['Li+(e)'].entropy_mole/1000/1000) # Why isn't this zero?
+print(anode.elyte_obj['Li+(e)'].entropy_mole/1000/1000) # Why isn't this zero?
 print(f"G_Li+(e) = {anode.elyte_obj['Li+(e)'].gibbs_mole/1000/1000} [kJ/mole], I was expecting -278")
 #print("The value I back calculated that from the final voltage is 275.5 (before 278.049) so I am now more confused")
 print(f"G_Li(b) = {anode.bulk_obj['Li(b)'].gibbs_mole/1000/1000} [kJ/mole] which is 298.28*0.0291 as expected")
@@ -62,8 +62,18 @@ solver = sun.ida.IDA(residual, **options)
 SV_dot_0  = np.zeros_like(SV_0)
 solution = solver.solve(tspan, SV_0, SV_dot_0)
 
+sim_outputs =np.stack((*np.transpose(solution.y), solution.t))
+create_plots(SV_idx, sim_outputs, sep, anode, cathode, params)
+
+params.i_ext = 0.1
+options =  {'userdata':(SV_idx, anode, sep, cathode, params, algebraic), 
+            'rtol':1e-4,'atol':1e-12, 
+            'algebraic_idx':algvars, 'first_step':1e-15,'eventsfn':terminate_check,'num_events':num_roots}
+SV_0 = solution.y[-1,:]
+SV_dot_0  = np.zeros_like(SV_0)
+solution = solver.solve(tspan, SV_0, SV_dot_0)
+
+
 # process the simulation outputs
 sim_outputs =np.stack((*np.transpose(solution.y), solution.t))
-create_plots(SV_idx, sim_outputs, sep, params)
-
-
+create_plots(SV_idx, sim_outputs, sep, anode, cathode, params)
