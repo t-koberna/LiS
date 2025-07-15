@@ -1,6 +1,6 @@
 # setup.py
 #
-# This file sets up the pointers and solution vector for the model 
+# This file sets up the pointers and solution vector for the model
 import cantera as ct
 import numpy as np
 
@@ -25,7 +25,7 @@ class Anode:
     create a class to hold the properties for the anode object
     '''
     def __init__(self,path, input_file, sep, params):
-        self.inputs = input_file['cell-description']['anode']                                          
+        self.inputs = input_file['cell-description']['anode']
         self.bulk_obj = ct.Solution(path, self.inputs['bulk-phase'])
         self.bulk_obj.TP = params.T, params.P
         self.conductor_obj = ct.Solution(path, self.inputs['conductor-phase'])
@@ -36,10 +36,10 @@ class Anode:
 
         # If I want to set concentrations not mole fractions then I need to change the thermo for the phase
         #       meaning I could not use "ideal-condensed" anymore
-        self.elyte_obj.X = C_k_0_elyte 
+        self.elyte_obj.X = C_k_0_elyte
         self.surf_obj = ct.Interface(path, self.inputs['surf-phase'], [self.bulk_obj, self.elyte_obj, self.conductor_obj])
         self.surf_obj.TP = params.T, params.P
-        
+
 class Seperator:
     '''
     create a class to hold the properties for the seperator object
@@ -48,7 +48,7 @@ class Seperator:
         self.inputs = input_file['cell-description']['separator']
         self.elyte_obj = ct.Solution(path, self.inputs['electrolyte-phase'])
         C_k_0_elyte = [species['C_k'] for species in self.inputs['transport']['diffusion-coefficients']]
-        self.elyte_obj.X = C_k_0_elyte 
+        self.elyte_obj.X = C_k_0_elyte
         self.elyte_obj.TP = params.T, params.P
 
 class Cathode:
@@ -71,6 +71,8 @@ class Cathode:
         self.conversion_obj = []
         self.conversion_surf_obj = []
 
+        # The input file lists all conversion phases (e.g. S8, Li2S)
+        # Loop over those phases, here to create Cantera objects.
         for i, phase in enumerate(self.inputs["conversion-phases"]):
             self.conversion_phases.append(phase['bulk-name'])
             self.conversion_obj.append(ct.Solution(path, phase["bulk-name"]))
@@ -81,7 +83,7 @@ class Cathode:
 
 class SV_pointer:
     '''
-    create an object that holds all of the pointers 
+    create an object that holds all of the pointers
     '''
     def __init__(self,input_file, sep, params):
         n_elyte_points = sep.inputs['n_points']
@@ -111,12 +113,12 @@ class SV_pointer:
 
 def Solution_Vector_0(SV_idx, sep, anode, cathode, params):
     '''
-    set the initial values in the solution vector based on the yaml input file 
+    set the initial values in the solution vector based on the yaml input file
     '''
     C_k_0_elyte = [species['C_k'] for species in sep.inputs['transport']['diffusion-coefficients']]
     C_k_0 = C_k_0_elyte.copy()
     for i in range(sep.inputs['n_points']-1):
-        C_k_0_elyte = np.stack((*C_k_0_elyte,*C_k_0)) 
+        C_k_0_elyte = np.stack((*C_k_0_elyte,*C_k_0))
 
     SV_0 = np.zeros(SV_idx.num_vars)
     SV_0[SV_idx.ptr['phi_dl_an']] = sep.inputs['phi_0']
