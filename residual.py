@@ -10,10 +10,10 @@ def residual(t,SV,SV_dot,resid,user_data):
     The anode is at zero potential. The state variables for the double layer are delta potential differences
         - delta_phi_dl_an = phi_elyte_an - phi_an
         - delta_phi_dl_ca = phi_ca - phi_elyte_ca
-    I only use the electrolyte potentials in the migration term and they are deltas between nodes, so I chose to calculate them relative to themselves. That means they are all zero to start.
-
+    I only use the electrolyte potentials in the migration term and they are deltas between nodes, 
+        so I chose to calculate them relative to themselves. That means they are all zero to start.
     '''
-    SV_idx, an, sep, ca, params, algebraic  = user_data
+    SV_idx, i_ext, an, sep, ca, params, algebraic  = user_data
 
     n_elyte_nodes = sep.inputs['n_points']
     n_elyte_species = sep.elyte_obj.n_species
@@ -45,7 +45,7 @@ def residual(t,SV,SV_dot,resid,user_data):
     # (Faradaic current density is positive when electrons are consumed) Should this be the opposite? I thought I wanted
     #   a positive current in discharge?
     i_far_an = ct.faraday*sdot_electron_an # [C/kmol]*[kmol/m^2-s] = [A/m^2]
-    i_dl_an = params.i_ext - i_far_an # [A/m^2]
+    i_dl_an = i_ext - i_far_an # [A/m^2]
     c_dl_an = an.inputs['C_dl'] # [F/m^2]
     #print(i_far_an)
 
@@ -61,7 +61,7 @@ def residual(t,SV,SV_dot,resid,user_data):
     #   So, a negative rate of production of electrons should correspond to a positive faradic current.
     sdot_electron_ca = ca.surf_obj.get_net_production_rates(ca.host_obj) # rate electrons, positive if produced
     i_far_ca = -ct.faraday*sdot_electron_ca # [C/kmol]*[kmol/m^2-s] = [A/m^2]
-    i_dl_ca = params.i_ext - i_far_ca # [A/m^2]
+    i_dl_ca = i_ext - i_far_ca # [A/m^2]
     c_dl_ca = ca.inputs['C_dl'] # [F/m^2]
     resid[SV_idx.ptr['phi_dl_ca']] = SV_dot[SV_idx.ptr['phi_dl_ca']]  + i_dl_ca/c_dl_ca
 
@@ -74,7 +74,7 @@ def residual(t,SV,SV_dot,resid,user_data):
         # matches the ionic current (i_io) in one node seperator to the current in the previous nodee
         #   then sets the current in the first node to be equal to the external current.
         resid[SV_idx.ptr['phi_elyte'][1:]] = i_io[1:] - i_io[:-1]
-        resid[SV_idx.ptr['phi_elyte'][0]] = i_io[0] - params.i_ext #SV_dot[SV_idx.ptr['phi_elyte']]
+        resid[SV_idx.ptr['phi_elyte'][0]] = i_io[0] - i_ext #SV_dot[SV_idx.ptr['phi_elyte']]
     else:
         # Differentiates Sigma z_k*C_k = 0. This aproach enforces charge nuetrality and also implicitly
         #   solves for the potentials. Kind of like using a DAE, but hopefully more stable.
@@ -191,7 +191,7 @@ def residual_Li_Li(t,SV,SV_dot,resid,user_data):
     The residual used for a semetric cell, in the main model the cathode is set up differently than the anode so there
     needed to be slight adaptations
     '''
-    SV_idx, an, sep, ca, params, algebraic  = user_data
+    SV_idx, i_ext, an, sep, ca, params, algebraic  = user_data
 
     n_elyte_nodes = sep.inputs['n_points']
     n_elyte_species = sep.elyte_obj.n_species
@@ -220,7 +220,7 @@ def residual_Li_Li(t,SV,SV_dot,resid,user_data):
     # (Faradaic current density is positive when electrons are consumed) Should this be the opposite? I thought I wanted
     #   a positive current in discharge?
     i_far_an = -ct.faraday*sdot_electron_an # [C/kmol]*[kmol/m^2-s] = [A/m^2]
-    i_dl_an = params.i_ext - i_far_an # [A/m^2]
+    i_dl_an = i_ext - i_far_an # [A/m^2]
     c_dl_an = an.inputs['C_dl'] # [F/m^2]
 
     resid[SV_idx.ptr['phi_dl_an']] = SV_dot[SV_idx.ptr['phi_dl_an']] - i_dl_an/c_dl_an # [A/m^2]/[F/m^2]=[C/s-m^2]*[V-m^2/C]=[V/s]
@@ -231,7 +231,7 @@ def residual_Li_Li(t,SV,SV_dot,resid,user_data):
     sdot_electron_ca = ca.surf_obj.get_net_production_rates(ca.conductor_obj) # rate electrons, positive if produced
 
     i_far_ca = ct.faraday*sdot_electron_ca # [C/kmol]*[kmol/m^2-s] = [A/m^2]
-    i_dl_ca = params.i_ext - i_far_ca # [A/m^2]
+    i_dl_ca = i_ext - i_far_ca # [A/m^2]
     c_dl_ca = ca.inputs['C_dl'] # [F/m^2]
     #print(sdot_electron_ca)
     #print(sdot_electron_an)
@@ -249,7 +249,7 @@ def residual_Li_Li(t,SV,SV_dot,resid,user_data):
         # matches the ionic current (i_io) in one node seperator to the current in the previous nodee
         #   then sets the current in the first node to be equal to the external current.
         resid[SV_idx.ptr['phi_elyte'][1:]] = i_io[1:] - i_io[:-1]
-        resid[SV_idx.ptr['phi_elyte'][0]] = i_io[0] - params.i_ext #SV_dot[SV_idx.ptr['phi_elyte']]
+        resid[SV_idx.ptr['phi_elyte'][0]] = i_io[0] - i_ext #SV_dot[SV_idx.ptr['phi_elyte']]
     else:
         # Differentiates Sigma z_k*C_k = 0. This aproach enforces charge nuetrality and also implicitly
         #   solves for the potentials. Kind of like using a DAE, but hopefully more stable.

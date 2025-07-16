@@ -6,92 +6,93 @@
 
 cell-description:
   anode:
-    bulk-phase: 'lithium_metal' # Cantera phase name
-    surf-phase: 'lithium_electrolyte' # Cantera phase name
-    conductor-phase: 'electron' # Cantera phase name
-    thickness: 15e-6 # Initial anode thickness, [m]
-    C_dl: 1.5e-1 # [F/m2]
+    bulk-phase: 'lithium_metal'                               # Cantera phase name
+    surf-phase: 'lithium_electrolyte'                         
+    conductor-phase: 'electron'                               
+    thickness: 15e-6                                          # Initial anode thickness, [m]
+    C_dl: 1.5e-1                                              # Double layer capacity, [F/m2]
     
   separator:
-    phi_0: 2.75 #2.825 #1.0 # Initial electric potential, V
-    electrolyte-phase: 'electrolyte' # Cantera phase name
-    n_points: 3
-    thickness: 30e-6  # separator thickness, m
+    phi_0: 2.75 #2.825 #1.0                                   # Initial electric potential, V
+    electrolyte-phase: 'electrolyte'                          # Cantera phase name
+    n_points: 3                                               # number of nodes
+    thickness: 30e-6                                          # separator thickness, [m]
     transport:
-      mobile-ion:  'Li+(e)' # Species name for Li+ in elyte.
-      model: 'dilute-solution'
-      diffusion-coefficients:
+      mobile-ion:  'Li+(e)'                                   # Species name for Li+ in elyte.
+      model: 'dilute-solution'                                # Elyte transport model
+      diffusion-coefficients:                                 
         - species: 'Li+(e)'
-          D_k: 1e-10
-          C_k: 1.024e-1 # kmol_k/m^3
-          name: 'Li+(e)'
-          name-plot: '$\rm Li+$'
+          D_k: 1e-10                                          # Species Diffusion coeff, [m^2/s]
+          C_k: 1.024e-1                                       # Initial concentration, [kmol_k/m^3]
+          name: 'Li+(e)'                                      # Species name for when I want to pick one out of an array
+          name-plot: '$\rm Li+$'                              # Species name formatted for plotting
         - species: S8(e)
           D_k: 1e-11
-          C_k: 1.86e-3 # kmol_k/m^3
+          C_k: 1.86e-3 
           name: S8(e)
           name-plot: '$\rm S_8$'
         - species: S82-(e)
           D_k: 1e-11
-          C_k: 0 # kmol_k/m^3
+          C_k: 0 
           name: S82-(e)
           name-plot: '$\rm S_8^{2-}$'
         - species: Li2S(e)
           D_k: 1.1e-11
-          C_k: 5e-6 # kmol_k/m^3
+          C_k: 5e-6 
           name: 'Li2S(e)'
           name-plot: '$\rm Li_2S$'
         - species: 'TEGDME(e)'
           D_k: 1e-11
-          C_k: 1.023e-5 # kmol_k/m^3
+          C_k: 1.023e-5 
           name: 'TEGDME(e)'
           name-plot: '$\rm TEGDME$'
         - species: 'TFSI-(e)'
           D_k: 4e-9
-          C_k: 1.024e-1 # kmol_k/m^3
+          C_k: 1.024e-1 
           name: 'TFSI-(e)'
           name-plot: '$\rm TFSI-$'
    
   cathode:
-    # If we are above the potential nothing will happen
-    phi_0: 5.05 #2.946 # Initial electric potential, V
-    host-phase: 'carbon' # Cantera phase name
-    surf-phase: 'carbon_electrolyte' # Cantera phase name
-    conversion-phases:
-      - bulk-name: "sulfur" # Cantera phase name
-        surf-name: "sulfur_surf" # Cantera name for surface phase
-        elyte-name: "S8(e)"
-      - bulk-name: "lithium_sulfide" # Cantera phase name
-        surf-name: "lithium_sulfide_surf" # Cantera name for surface phase
+    phi_0: 5.05 #2.946                                        # Initial electric potential, [V]
+    host-phase: 'carbon'                                      # Cantera phase name
+    surf-phase: 'carbon_electrolyte'                          
+    conversion-phases:                                        # Phases used for growth
+      - bulk-name: "sulfur"                                   
+        surf-name: "sulfur_surf"                           
+        elyte-name: "S8(e)"               
+      - bulk-name: "lithium_sulfide"                          
+        surf-name: "lithium_sulfide_surf"                    
         elyte-name: "Li2S(s)"
-    nucleation:
+    nucleation:                                               # Includes all species that can nucleate
       - species: 'Li2S'
         num-buckets: 150
         bucket-thciness: 8e-10
       - species: 'S8'
         num-buckets: 150
         bucket-thciness: 8e-10
-    C_dl: 2.5e-1 # [F/m2]
+    C_dl: 2.5e-1                                              # Double layer capacity, [F/m2]
 
-# Simulation parameters:
+### Simulation parameters:
 parameters:
-  T: 25.15 C
-  P: 101325 Pa
+  T: 25.15 C                                                  # Cell temperature
+  P: 101325 Pa                                                # Cell pressure
   simulations:
-    type: 'CC_cycle' # Constant current cycling
-    i_ext: 0.0 A/cm2 # the external current
-    time_max: 100 # max time for the simulation, [s]
+    equilibrate:
+        enable: True                                          # Start with a hold at open circuit?
+        time: 300                                              # If true, how long is the hold, [s]
+        plot_flag: False                                       # Do you want to generate plots after the equilibration?
+    i_ext: 0.1 A/cm2                                          # the external current, [A/m2]
+    time_max: 100                                             # max time for the simulation, [s]
     number-bins:
       Li2S: 10
       S8: 10
-  plot-species:
+  plot-species:                                               # Determines which species get thier own concentration plots
     - name: 'Li+(e)'
     #- name: 'TEGDME(e)'
     #- name: 'S8(e)'
 
 
-# Cantera inputs:
-
+### Cantera inputs:
 phases:
 - name: lithium_metal
   thermo: fixed-stoichiometry
@@ -218,7 +219,7 @@ species:
   composition: {Li: 1, E: -1}
   thermo:
     model: constant-cp
-    h0: -278 kJ/mol #-275.5 makes it reach the equalibrium voltage I expect
+    h0: -278 kJ/mol 
     s0: 0.0 J/mol/K
   equation-of-state:
     model: constant-volume
@@ -277,13 +278,12 @@ lithium-electrolyte-reactions:
 - equation: Li(b) <=> Li+(e) + electron
   id: lithium_faradaic_reaction
   rate-constant: {A: 2.0e13, b: 0.0, Ea: 0.0}
-  #rate-constant: {A: 2.0e-08, b: 0.0, Ea: 0.0}
   beta: 0.5
 
 carbon-elyte-reactions:
 - equation: 1 Li+(e) + 0.0625 S8(e) + 1 electron <=> 0.5 Li2S(e)
   id: sulfur_reduction_1
-  rate-constant: {A: 1.1e10, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e11, b: 0.0, Ea: 0.0}
   beta: 0.5
 #- equation: S8(e) + 2 electron <=> S82-(e)
 #  id: sulfur_reduction_2
@@ -326,7 +326,7 @@ bulk-elyte-reactions: # do I need to standardize these as well?
 #  id: bulk_8
 #  rate-constant: {A: 1.1e5, b: 0.0, Ea: 0.0}
 
-#Official Soundtrack (from Batcan):
+#Official Soundtrack (from a yaml file in Batcan):
     #Passion Pit - Gossamer
     #CHVRCHES - Every Open Eye
     #Cursive - Happy Hollow
