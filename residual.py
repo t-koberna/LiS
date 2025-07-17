@@ -79,11 +79,11 @@ def residual(t,SV,SV_dot,resid,user_data):
         # Differentiates Sigma z_k*C_k = 0. This aproach enforces charge nuetrality and also implicitly
         #   solves for the potentials. Kind of like using a DAE, but hopefully more stable.
         # Issue: I was not getting charge neutrality to be respected unless I put a big multiplyer on the charges
-        multiplyer = 1e10
+        multiplier = 1e10
         # I reshape the dC_k_elyte_dt so the dot product with the species charges yeilds the sum of the
         #   change in charge of the ions in each node
         dC_k_elyte_dt_reshape = np.reshape(dC_k_elyte_dt, (n_elyte_nodes,n_elyte_species))
-        resid[SV_idx.ptr['phi_elyte']] = SV_dot[SV_idx.ptr['phi_elyte']] - multiplyer*np.dot(dC_k_elyte_dt_reshape,   sep.elyte_obj.charges)
+        resid[SV_idx.ptr['phi_elyte']] = SV_dot[SV_idx.ptr['phi_elyte']] - multiplier*np.dot(dC_k_elyte_dt_reshape,   sep.elyte_obj.charges)
 
     # If my solution is failing at t=0, I use this so I can trouble shoot the rest
     #resid[SV_idx.ptr['phi_elyte']] = SV_dot[SV_idx.ptr['phi_elyte']]
