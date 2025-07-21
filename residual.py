@@ -121,7 +121,9 @@ def elyte_rates(SV_idx, an, ca, sep, params, i_dl_an, i_dl_ca, SV):
     #  species flux across those boundries are calculated in the for loop below.
     R = ct.gas_constant
     F = ct.faraday
-    # This loop finds the flux of each species one by one, for the boundries between the nodes
+    # This loop finds the flux of each species one by one, for the boundries between
+    #  the nodes:
+    #TODO #5
     for i in range((n_elyte_nodes-1)*n_elyte_species):
         current_node = int(i/n_elyte_species)
         species = SV_idx.elyte_species[i] # used to find the charge
