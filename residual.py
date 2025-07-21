@@ -10,7 +10,7 @@ def residual(t,SV,SV_dot,resid,user_data):
     The anode is at zero potential. The state variables for the double layer are delta potential differences
         - delta_phi_dl_an = phi_elyte_an - phi_an
         - delta_phi_dl_ca = phi_ca - phi_elyte_ca
-    I only use the electrolyte potentials in the migration term and they are deltas between nodes, 
+    I only use the electrolyte potentials in the migration term and they are deltas between nodes,
         so I chose to calculate them relative to themselves. That means they are all zero to start.
     '''
     SV_idx, i_ext, an, sep, ca, params, algebraic  = user_data
@@ -21,6 +21,7 @@ def residual(t,SV,SV_dot,resid,user_data):
     ## Set the state of the Cantera objects based on SV
     # I do not set the potential of the conductor object because it is zero. I set the potential of the elyte
     #   near the electrode as the same as the potential of the double layer
+    an.conductor_obj.electric_potential = 0.
     an.elyte_obj.electric_potential = SV[SV_idx.ptr['phi_dl_an']]
     an.elyte_obj.X = SV[SV_idx.ptr['C_k_elyte'][0:n_elyte_species]] # the concetrations in the first elyte node
 
@@ -60,13 +61,18 @@ def residual(t,SV,SV_dot,resid,user_data):
     # Durring discharge (positve case of the sign convention), electrons enter the cathode and are consumed.
     #   So, a negative rate of production of electrons should correspond to a positive faradic current.
     sdot_electron_ca = ca.surf_obj.get_net_production_rates(ca.host_obj) # rate electrons, positive if produced
-    i_far_ca = -ct.faraday*sdot_electron_ca # [C/kmol]*[kmol/m^2-s] = [A/m^2]
+
+    # Fraction of geometric surface area available for electrode-elyte reactions
+    #  Placeholder. Should eventually be based on S8(s) and Li2S(s) coverage.
+    A_frac = 1.
+
+    i_far_ca = -ct.faraday * sdot_electron_ca * A_frac # [C/kmol]*[kmol/m^2-s] = [A/m^2]
     i_dl_ca = i_ext - i_far_ca # [A/m^2]
     c_dl_ca = ca.inputs['C_dl'] # [F/m^2]
     resid[SV_idx.ptr['phi_dl_ca']] = SV_dot[SV_idx.ptr['phi_dl_ca']]  + i_dl_ca/c_dl_ca
 
     ## Seperator
-    dC_k_elyte_dt, i_io = Dilute_Solution_Theory(SV_idx, an, ca, sep, params, i_dl_an, i_dl_ca, SV)
+    dC_k_elyte_dt, i_io = elyte_rates(SV_idx, an, ca, sep, params, i_dl_an, i_dl_ca, SV)
     resid[SV_idx.ptr['C_k_elyte']] = SV_dot[SV_idx.ptr['C_k_elyte']]  - dC_k_elyte_dt
 
     if algebraic == True:
@@ -76,12 +82,14 @@ def residual(t,SV,SV_dot,resid,user_data):
         resid[SV_idx.ptr['phi_elyte'][1:]] = i_io[1:] - i_io[:-1]
         resid[SV_idx.ptr['phi_elyte'][0]] = i_io[0] - i_ext #SV_dot[SV_idx.ptr['phi_elyte']]
     else:
-        # Differentiates Sigma z_k*C_k = 0. This aproach enforces charge nuetrality and also implicitly
-        #   solves for the potentials. Kind of like using a DAE, but hopefully more stable.
-        # Issue: I was not getting charge neutrality to be respected unless I put a big multiplyer on the charges
+        # Differentiates Sigma z_k*C_k = 0. This aproach enforces charge nuetrality and
+        #  also implicitly solves for the potentials. Kind of like using a DAE, but
+        #  hopefully more stable.
+        # Issue: I was not getting charge neutrality to be respected unless I put a big
+        #  multiplier on the charges
         multiplier = 1e10
-        # I reshape the dC_k_elyte_dt so the dot product with the species charges yeilds the sum of the
-        #   change in charge of the ions in each node
+        # I reshape the dC_k_elyte_dt so the dot product with the species charges
+        #   yields the sum of the change in charge of the ions in each node
         dC_k_elyte_dt_reshape = np.reshape(dC_k_elyte_dt, (n_elyte_nodes,n_elyte_species))
         resid[SV_idx.ptr['phi_elyte']] = SV_dot[SV_idx.ptr['phi_elyte']] - multiplier*np.dot(dC_k_elyte_dt_reshape,   sep.elyte_obj.charges)
 
@@ -94,7 +102,7 @@ def residual(t,SV,SV_dot,resid,user_data):
     resid[SV_idx.ptr['bm_Li2S']] = SV_dot[SV_idx.ptr['bm_Li2S']]
     resid[SV_idx.ptr['bm_S8']] = SV_dot[SV_idx.ptr['bm_S8']]
 
-def Dilute_Solution_Theory(SV_idx, an, ca, sep, params, i_dl_an, i_dl_ca, SV):
+def elyte_rates(SV_idx, an, ca, sep, params, i_dl_an, i_dl_ca, SV):
     '''
     Find the for the species fluxes in the electroltye
     '''
@@ -107,9 +115,10 @@ def Dilute_Solution_Theory(SV_idx, an, ca, sep, params, i_dl_an, i_dl_ca, SV):
     # a positive double layer current should take Li+ ions away from from the elyte
     # These two are equal and opposite when the current is zero and that makes sense to me because there is no net current
 
-    # N_k_elyte is calculated at the boundry of each control volume. The first boundry is the anode surface, so there is no
-    #   ion flux across there (only sepecies production). The next boundries are halfway between nodes and the species flux
-    #   across those boundries are calculated in the for loop below.
+    # N_k_elyte is calculated at the boundary of each control volume. The first
+    #  boundary is the anode surface, so there is no ion flux across there (only
+    #  sepecies production). The next boundaries are halfway between nodes and the
+    #  species flux across those boundries are calculated in the for loop below.
     R = ct.gas_constant
     F = ct.faraday
     # This loop finds the flux of each species one by one, for the boundries between the nodes
@@ -120,16 +129,25 @@ def Dilute_Solution_Theory(SV_idx, an, ca, sep, params, i_dl_an, i_dl_ca, SV):
 
         D_k = sep.inputs['transport']['diffusion-coefficients'][species_int]['D_k']
         z_k = float(sep.elyte_obj[species].charges)
-        # the derivate of the voltage with respect to distance
-        del_phi = (SV[SV_idx.ptr['phi_elyte'][current_node+1]] - SV[SV_idx.ptr['phi_elyte'][current_node]])/dy
-        # the average concentration is used for the concentration halfway between nodes
-        C_k = (SV[SV_idx.ptr['C_k_elyte'][i]] + SV[SV_idx.ptr['C_k_elyte'][i+n_elyte_species]])/2
-        # logic check, If the next node has a larger potential, a positve ion will have a negative flux
+
+        # Electric potential gradient
+        del_phi = (SV[SV_idx.ptr['phi_elyte'][current_node+1]]
+                   - SV[SV_idx.ptr['phi_elyte'][current_node]])/dy
+
+        # Concentration at the boundary, taken by averaging at node centers:
+        C_k = (SV[SV_idx.ptr['C_k_elyte'][i]]
+               + SV[SV_idx.ptr['C_k_elyte'][i+n_elyte_species]])/2
+
+        # logic check, If the next node has a larger potential, a positve ion will have
+        #  a negative flux
         migration = - z_k*D_k*F*C_k*del_phi/(R*params.T)
 
-        # the derivate of the concentration with respect to distance
-        del_C = (SV[SV_idx.ptr['C_k_elyte'][i+n_elyte_species]] - SV[SV_idx.ptr['C_k_elyte'][i]])/dy
-        # logic check, if the next node has a larger concentration, the species will have a negative flux
+        # Concentration gradient:
+        del_C = (SV[SV_idx.ptr['C_k_elyte'][i+n_elyte_species]]
+                 - SV[SV_idx.ptr['C_k_elyte'][i]])/dy
+
+        # logic check, if the next node has a larger concentration, the species will
+        #  have a negative flux
         diffusion = - D_k*del_C
 
         # assumes the bulk velocity of the fluid is zero
@@ -138,7 +156,6 @@ def Dilute_Solution_Theory(SV_idx, an, ca, sep, params, i_dl_an, i_dl_ca, SV):
         #print(diffusion)
         N_k_elyte[i+n_elyte_species] = (migration + diffusion + convection)
 
-    grad_N_k_node = np.zeros((n_elyte_nodes)*n_elyte_species) #the gradient of the species fluxes for each species, at each node
     i_io = np.zeros(n_elyte_nodes) # the current due to ion transport at each node
     for i in range(n_elyte_nodes):
         # the flux crossing the left boundry, for all species in one node
@@ -148,10 +165,14 @@ def Dilute_Solution_Theory(SV_idx, an, ca, sep, params, i_dl_an, i_dl_ca, SV):
 
         # for a 1-D model, the gradient is a sigle partial derivative. This partial is delta_N_k divided by dy
         # This sets the gradient for all species in one node
-        grad_N_k_node[i*n_elyte_species:i*n_elyte_species+n_elyte_species] = (entering - exiting)/dy
+        # grad_N_k_node_o[i*n_elyte_species:i*n_elyte_species+n_elyte_species] = (entering - exiting)/dy
 
         # Ionic current = sum(z_k*N_k*F) for the node. Only based on transport, not species production
         i_io[i] = F*np.dot((entering - exiting),sep.elyte_obj.charges)
+
+    grad_N_k_node = (N_k_elyte[:-n_elyte_species] - N_k_elyte[n_elyte_species:])/dy
+
+    # print(grad_N_k_node - grad_N_k_node_o)
     #print(i_io)
     # Account for surface and bulk reactions
     s_dot = surface_production(SV, SV_idx, an, ca, sep, n_elyte_nodes, n_elyte_species)
@@ -159,11 +180,10 @@ def Dilute_Solution_Theory(SV_idx, an, ca, sep, params, i_dl_an, i_dl_ca, SV):
     dC_k_elyte_dt = grad_N_k_node + omega_dot + s_dot
 
     # Account for ions entering/leaving the double layer
+    #TODO #4
     dC_k_elyte_dt[0] =  dC_k_elyte_dt[0] + i_dl_an/ct.faraday
-    dC_k_elyte_dt[n_elyte_species*(n_elyte_nodes-1)] =  dC_k_elyte_dt[n_elyte_species*(n_elyte_nodes-1)] - i_dl_ca/ct.faraday
-
-    #print(dC_k_elyte_dt[n_elyte_species*(n_elyte_nodes-1)] )
-    #print(i_io)
+    dC_k_elyte_dt[n_elyte_species*(n_elyte_nodes-1)] =  \
+        dC_k_elyte_dt[n_elyte_species*(n_elyte_nodes-1)] - i_dl_ca/ct.faraday
 
     return dC_k_elyte_dt, i_io
 
@@ -172,7 +192,8 @@ def surface_production(SV, SV_idx, an, ca, sep, n_elyte_nodes, n_elyte_species):
     # surface production at the anode
     s_dot[0:n_elyte_species] = an.surf_obj.get_net_production_rates(an.elyte_obj)
     # surface production at the cathode
-    s_dot[(n_elyte_nodes-1)*n_elyte_species:n_elyte_nodes*n_elyte_species] = ca.surf_obj.get_net_production_rates(ca.elyte_obj)
+    s_dot[(n_elyte_nodes-1)*n_elyte_species:n_elyte_nodes*n_elyte_species] = \
+        ca.surf_obj.get_net_production_rates(ca.elyte_obj)
 
     return s_dot
 
@@ -181,8 +202,10 @@ def bulk_production(SV,  SV_idx, sep, n_elyte_nodes, n_elyte_species):
     omega_dot = np.zeros_like(SV[SV_idx.ptr['C_k_elyte']])
     # Set the concentrations for the nodes in the electrolyte
     for i in range(n_elyte_nodes):
-        sep.elyte_obj.X = SV[SV_idx.ptr['C_k_elyte'][i*n_elyte_species:(i+1)*n_elyte_species]]
-        omega_dot[i*n_elyte_species:(i+1)*n_elyte_species] = sep.elyte_obj.net_production_rates
+        sep.elyte_obj.X = \
+            SV[SV_idx.ptr['C_k_elyte'][i*n_elyte_species:(i+1)*n_elyte_species]]
+        omega_dot[i*n_elyte_species:(i+1)*n_elyte_species] = \
+            sep.elyte_obj.net_production_rates
     return omega_dot
 
 
@@ -197,68 +220,92 @@ def residual_Li_Li(t,SV,SV_dot,resid,user_data):
     n_elyte_species = sep.elyte_obj.n_species
 
     #### Set the state of the Cantera objects based on SV
-    # the potential of the eleyte near the electrode is the same as the potential of the double layer plus the first
-    #   node potential of the seperator (The seperator only has potentials relative to itself)
+    # the potential of the eleyte near the electrode is the same as the potential of
+    #  the double layer plus the first node potential of the seperator (The seperator
+    #  only has potentials relative to itself)
     an.elyte_obj.electric_potential = SV[SV_idx.ptr['phi_dl_an']] + SV[SV_idx.ptr['phi_elyte'][0]]
 
-    an.elyte_obj.X = SV[SV_idx.ptr['C_k_elyte'][0:n_elyte_species]] # the concetrations in the first elyte node
+    # Concentrations in the first elyte node
+    an.elyte_obj.X = SV[SV_idx.ptr['C_k_elyte'][0:n_elyte_species]]
 
-    # The potential at the cathode is the last node in the elyte relative to the del_phi_dl_ca
-    # for now I am using the anode double layer since I do not have the potentials in the seperator working
-    ca.elyte_obj.electric_potential = SV[SV_idx.ptr['phi_elyte'][-1]] # same as the last eltye node
-    ca.conductor_obj.electric_potential = SV[SV_idx.ptr['phi_elyte'][-1]] + SV[SV_idx.ptr['phi_dl_ca']] #
-    ca.elyte_obj.X = SV[SV_idx.ptr['C_k_elyte'][n_elyte_species*(n_elyte_nodes-1):]] # the concetrations in the final elyte node
-    #print(ca.elyte_obj.electric_potential)
-    #print(ca.host_obj.electric_potential)
+    # The potential at the cathode is the last node in the elyte relative to the
+    #  del_phi_dl_ca for now I am using the anode double layer since I do not have the
+    #  potentials in the seperator working
+    ca.elyte_obj.electric_potential = SV[SV_idx.ptr['phi_elyte'][-1]]
+    ca.conductor_obj.electric_potential = (SV[SV_idx.ptr['phi_elyte'][-1]]
+                                           + SV[SV_idx.ptr['phi_dl_ca']])
+    # Concetrations in the final elyte node:
+    ca.elyte_obj.X = SV[SV_idx.ptr['C_k_elyte'][n_elyte_species*(n_elyte_nodes-1):]]
 
-    ## Anode
-    sdot_electron_an = an.surf_obj.get_net_production_rates(an.conductor_obj) # rate electrons, positive if produce
-    sdot_Li_an = an.surf_obj.get_net_production_rates(an.bulk_obj) # rate litium metal, negative if consumed [kmol/m^2-s]
-    #print(f" Li {sdot_Li_an} e {sdot_electron_an}")
+    """ Anode: """
+    #  Electron production rate (kmol/m2/s)
+    sdot_electron_an = an.surf_obj.get_net_production_rates(an.conductor_obj) #
+    #  Li metal production (kmol/m2/s)
+    sdot_Li_an = an.surf_obj.get_net_production_rates(an.bulk_obj)
 
-    # I tried to use "interface_current()" to check against this but it wouldn't run
-    # (Faradaic current density is positive when electrons are consumed) Should this be the opposite? I thought I wanted
-    #   a positive current in discharge?
-    i_far_an = -ct.faraday*sdot_electron_an # [C/kmol]*[kmol/m^2-s] = [A/m^2]
-    i_dl_an = i_ext - i_far_an # [A/m^2]
-    c_dl_an = an.inputs['C_dl'] # [F/m^2]
+    # Faradaic current density (A/m2) is positive when electrons are consumed (positive
+    #  charge transferred to the electrode):
+    i_far_an = -ct.faraday*sdot_electron_an
+    # Double layer curren (A/m2):
+    i_dl_an = i_ext - i_far_an
 
-    resid[SV_idx.ptr['phi_dl_an']] = SV_dot[SV_idx.ptr['phi_dl_an']] - i_dl_an/c_dl_an # [A/m^2]/[F/m^2]=[C/s-m^2]*[V-m^2/C]=[V/s]
-    resid[SV_idx.ptr['thickness_an']] = SV_dot[SV_idx.ptr['thickness_an']] - sdot_Li_an*an.bulk_obj.partial_molar_volumes #[kmol/m^2-s]*[m^3/kmol] = [m/s]
+    # Read out the double layer capacitance (F/m2):
+    c_dl_an = an.inputs['C_dl']
 
-    ## Cathode
-    # put the cathode before the elyte becuase I need the double layer current for conservation of charge
-    sdot_electron_ca = ca.surf_obj.get_net_production_rates(ca.conductor_obj) # rate electrons, positive if produced
+    # Derivative of the double layer potential difference (V/s):
+    resid[SV_idx.ptr['phi_dl_an']] = SV_dot[SV_idx.ptr['phi_dl_an']] - i_dl_an/c_dl_an
 
-    i_far_ca = ct.faraday*sdot_electron_ca # [C/kmol]*[kmol/m^2-s] = [A/m^2]
-    i_dl_ca = i_ext - i_far_ca # [A/m^2]
-    c_dl_ca = ca.inputs['C_dl'] # [F/m^2]
-    #print(sdot_electron_ca)
-    #print(sdot_electron_an)
-    #print(i_far_ca)
-    #print(i_dl_ca)
-    #print(i_dl_ca/c_dl_ca)
+    # Derivative of the anode thickness (m/s):
+    resid[SV_idx.ptr['thickness_an']] = (SV_dot[SV_idx.ptr['thickness_an']]
+                                         - sdot_Li_an*an.bulk_obj.partial_molar_volumes)
+
+    """ Cathode """
+    #  Electron production rate (kmol/m2/s)
+    sdot_electron_ca = ca.surf_obj.get_net_production_rates(ca.conductor_obj)
+
+    # Faradaic current density (A/m2) is positive when electrons are produced (positive
+    #  charge transferred to the electrolyte):
+    i_far_ca = ct.faraday*sdot_electron_ca
+
+    # Double layer current (A/m2)
+    i_dl_ca = i_ext - i_far_ca
+
+    # Read out the double layer capacitance (F/m2):
+    c_dl_ca = ca.inputs['C_dl']
+
+    # Derivative of the double layer potential difference (V/s):
     resid[SV_idx.ptr['phi_dl_ca']] = SV_dot[SV_idx.ptr['phi_dl_ca']]  - i_dl_ca/c_dl_ca
 
-    ## Seperator
-    dC_k_elyte_dt, i_io = Dilute_Solution_Theory(SV_idx, an, ca, sep, params, i_dl_an, i_dl_ca, SV)
+    """Separator"""
+    # This function calculates the derivative of the separator species concenttrations
+    #  (kmol/m3/s) and the ionic current (A/m2) at every node boundary (n+1 currents
+    #  for n nodes)
+    dC_k_elyte_dt, i_io = elyte_rates(SV_idx, an, ca, sep, params, i_dl_an, i_dl_ca, SV)
+    # Define electrolyte species residual
     resid[SV_idx.ptr['C_k_elyte']] = SV_dot[SV_idx.ptr['C_k_elyte']]  - dC_k_elyte_dt
 
     if algebraic == True:
-        # I do not have anything to enforce concentraion of charge for this aproach.
-        # matches the ionic current (i_io) in one node seperator to the current in the previous nodee
-        #   then sets the current in the first node to be equal to the external current.
+        # Charge conservation in the electrolyte arises from enforcing the divergence
+        #  of the ionic current equals zero:
         resid[SV_idx.ptr['phi_elyte'][1:]] = i_io[1:] - i_io[:-1]
-        resid[SV_idx.ptr['phi_elyte'][0]] = i_io[0] - i_ext #SV_dot[SV_idx.ptr['phi_elyte']]
+
+        # At the first electrolyte node, the ionic current equals the external current:
+        resid[SV_idx.ptr['phi_elyte'][0]] = i_io[0] - i_ext
     else:
-        # Differentiates Sigma z_k*C_k = 0. This aproach enforces charge nuetrality and also implicitly
-        #   solves for the potentials. Kind of like using a DAE, but hopefully more stable.
-        # Issue: I was not getting charge neutrality to be respected unless I put a big multiplyer on the charges
-        multiplyer = 1e4
-        # I reshape the dC_k_elyte_dt so the dot product with the species charges yeilds the sum of the
-        #   change in charge of the ions in each node
-        dC_k_elyte_dt_reshape = np.reshape(dC_k_elyte_dt, (n_elyte_nodes,n_elyte_species))
-        resid[SV_idx.ptr['phi_elyte']] = SV_dot[SV_idx.ptr['phi_elyte']] - multiplyer*np.dot(dC_k_elyte_dt_reshape,   sep.elyte_obj.charges)
+        # Calculate the differential of the local potential as dPhi/dt= Sigma z_k*C_k.
+        #   This aproach enforces charge nuetrality, in a transient manner (if the node
+        #   accumulates positive charge, this implies the 2nd derivative of the
+        #   potential, w/r/t space is positive.  Increasing the potential will reduce
+        #   the 2nd derivative).
+
+        # A large multiplier moves the system more quickly toward charge neutrality:
+        multiplier = 1e4
+
+        # I reshape the dC_k_elyte_dt so the dot product with the species charges
+        #   yields the sum of the change in charge of the ions in each node
+        dC_k_elyte_dt_r = np.reshape(dC_k_elyte_dt, (n_elyte_nodes,n_elyte_species))
+        resid[SV_idx.ptr['phi_elyte']] = (SV_dot[SV_idx.ptr['phi_elyte']]
+                        - multiplier*np.dot(dC_k_elyte_dt_r,   sep.elyte_obj.charges))
 
     # If my solution is failing at t=0, I use this so I can trouble shoot the rest
     #resid[SV_idx.ptr['phi_elyte']] = SV_dot[SV_idx.ptr['phi_elyte']]
