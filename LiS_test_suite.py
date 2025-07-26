@@ -6,19 +6,19 @@ from ruamel.yaml import YAML
 from setup import Anode, Separator, Parameters, Cathode
 import matplotlib.pyplot as plt
 
-
 path = Path("Li_Sulfur.yaml")
 yaml = YAML(typ='safe')
 inputs = yaml.load(path)
 
 i_ext = 0.0
-SV_0 = [0.1]
+SV_0 = [2.0]
 
 params = Parameters(inputs)
 sep = Separator(path, inputs, params)
 cathode = Cathode(path, inputs, sep, params)
 anode = Anode(path, inputs, sep, params)
 
+# Change this line for what half cell to test
 electrode = cathode
 
 def residual(t,SV,SV_dot,resid,user_data):
@@ -178,19 +178,21 @@ if isinstance(electrode, Cathode):
     G_S8 = cathode.elyte_obj.standard_gibbs_RT[1]*R*T + R*T*np.log(cathode.elyte_obj.X[1])
     G_Li2S = cathode.elyte_obj.standard_gibbs_RT[3]*R*T + R*T*np.log(cathode.elyte_obj.X[3])
     Delta_G_rxn = 8*G_Li2S - 16*G_Li_ion - G_S8
-    U = -Delta_G_rxn/(n*F)/2
+    U = -Delta_G_rxn/(n*F)
+    electrode_type = "Cathode"
 else:
     n = 1
     G_Li_ion = anode.elyte_obj.standard_gibbs_RT[0]*R*T + R*T*np.log(anode.elyte_obj.X[0])
     G_Li = anode.bulk_obj['Li(b)'].gibbs_mole
     Delta_G_rxn = G_Li_ion - G_Li
     U = -Delta_G_rxn/(n*F)
+    electrode_type = "Anode"
 
 
 plt.figure()
 plt.hlines(y=U, xmin=0, xmax=time[-1], linewidth=0.5, color='k',label="hand calc eq")
 plt.plot(time, phi_dl,'.',label="model")
-plt.title("Cathode Double Layer Potential")
+plt.title(f"{electrode_type} Double Layer Potential")
 plt.ylabel("Voltage [V]")
 plt.xlabel("Time [s]")
 plt.show()
