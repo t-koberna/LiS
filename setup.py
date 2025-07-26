@@ -42,9 +42,9 @@ class Anode:
         self.surf_obj.TP = params.T, params.P
 
 
-class Seperator:
+class Separator:
     '''
-    create a class to hold the properties and Cantera objects for the seperator object
+    create a class to hold the properties and Cantera objects for the separator object
     '''
     def __init__(self,path, input_file, params):
         self.inputs = input_file['cell-description']['separator']

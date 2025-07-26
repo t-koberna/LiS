@@ -26,7 +26,7 @@ def create_plots(SV_idx, sim_outputs, sep, anode, cathode, params):
 
     #==================================================================================================
     #
-    #   Set plotting varibles and run post processing calculations (in the future I will also set plot flags here)
+    #   Set plotting variables and run post processing calculations (in the future I will also set plot flags here)
     #
     #==================================================================================================
 
@@ -54,6 +54,9 @@ def create_plots(SV_idx, sim_outputs, sep, anode, cathode, params):
     G_Li2S = cathode.elyte_obj.standard_gibbs_RT[3]*R*T + R*T*np.log(cathode.elyte_obj.X[3])
     Delta_G_rxn = 8*G_Li2S - 16*G_Li_ion - G_S8
     U_ca = -Delta_G_rxn/(n*F)
+    print(U_ca)
+    print(phi_dl_ca[-1])
+    print(U_ca/phi_dl_ca[-1])
 
 
     #==================================================================================================
@@ -87,7 +90,7 @@ def create_plots(SV_idx, sim_outputs, sep, anode, cathode, params):
     plt.xlabel("Time [s]")
 
     ## Elyte species concentrations
-    # The list of species that have idividual plots
+    # The list of species that have individual plots
     species_to_plot = [species['name'] for species in params.inputs['plot-species']]
     for x, plot_species in enumerate(species_to_plot):
         plt.figure()
@@ -99,7 +102,7 @@ def create_plots(SV_idx, sim_outputs, sep, anode, cathode, params):
         plt.xlabel("Time [s]")
         plt.legend()
 
-    # One plot for all of the elyte species concentrations (each get thier own subplot)
+    # One plot for all of the elyte species concentrations (each get their own subplot)
     num_species = len(name_elyte_species)
     a = int(np.sqrt(num_species))
     b = a + 1
@@ -136,7 +139,7 @@ def create_plots(SV_idx, sim_outputs, sep, anode, cathode, params):
     # Check charge neutrality at each node in the elyte
     fig3, [ax1, ax2] = plt.subplots(1,2)
     # plot the total negative charges from S82- and TSFI- against the total positive charges
-    #   If the solution is charge nuetral they should overlap
+    #   If the solution is charge neutral they should overlap
     plot_species_1 = 'Li+(e)'
     species_idx_1 = SV_idx.elyte_species.index(plot_species_1)
     plot_species_2 = 'TFSI-(e)'
@@ -175,4 +178,7 @@ def create_plots(SV_idx, sim_outputs, sep, anode, cathode, params):
     plt.show()
 
 def save_data(SV_idx, sim_outputs):
+    '''
+    Will add later
+    '''
     d = 4

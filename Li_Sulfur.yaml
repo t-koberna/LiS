@@ -53,7 +53,7 @@ cell-description:
           name-plot: '$\rm TFSI-$'
    
   cathode:
-    phi_0: 5.05 #2.946                                        # Initial electric potential, [V]
+    phi_0: 2.8 # 5.05 #2.946                                        # Initial electric potential, [V]
     host-phase: 'carbon'                                      # Cantera phase name
     surf-phase: 'carbon_electrolyte'                          
     conversion-phases:                                        # Phases used for growth
@@ -79,14 +79,14 @@ parameters:
   simulations:
     equilibrate:
         enable: True                                          # Start with a hold at open circuit?
-        time: 300                                              # If true, how long is the hold, [s]
-        plot_flag: False                                       # Do you want to generate plots after the equilibration?
+        time: 3000                                              # If true, how long is the hold, [s]
+        plot_flag: True                                       # Do you want to generate plots after the equilibration?
     i_ext: 0.1 A/cm2                                          # the external current, [A/m2]
     time_max: 100                                             # max time for the simulation, [s]
     number-bins:
       Li2S: 10
       S8: 10
-  plot-species:                                               # Determines which species get thier own concentration plots
+  plot-species:                                               # Determines which species get their own concentration plots
     - name: 'Li+(e)'
     #- name: 'TEGDME(e)'
     #- name: 'S8(e)'
@@ -282,6 +282,7 @@ lithium-electrolyte-reactions:
 
 carbon-elyte-reactions:
 - equation: 1 Li+(e) + 0.0625 S8(e) + 1 electron <=> 0.5 Li2S(e)
+#- equation: 16 Li+(e) + 1 S8(e) + 16 electron <=> 8 Li2S(e)
   id: sulfur_reduction_1
   rate-constant: {A: 1.1e11, b: 0.0, Ea: 0.0}
   beta: 0.5

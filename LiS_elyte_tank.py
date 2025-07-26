@@ -19,13 +19,20 @@ inputs = yaml.load(path)
 params = Parameters(inputs)
 elyte = Seperator(path, inputs, params)
 
-# production rates are in kmol/m^3-s
+#production rates are in kmol/m^3-s
 #print(elyte.elyte_obj.kinetics_species_names)
 #print(elyte.elyte_obj.net_production_rates)
 #print(elyte.elyte_obj.concentrations*0)
 #print(elyte.elyte_obj.concentrations.tolist())
-
-
+print(elyte.elyte_obj.concentrations)
+X = elyte.elyte_obj.X
+print(X)
+C_k = np.array([1.024e-6, 1.943e-6, 1.943e-6, 1.821e-6, 1.0e-6, 3.314e-6, 1.0e-6, 2.046e-6, 1.0e-6, 5.348e-6, 1.456e-6])
+print(C_k/sum(C_k))
+print(C_k/elyte.elyte_obj.concentrations)
+molar_volumes = elyte.elyte_obj.partial_molar_volumes
+print(molar_volumes/X)
+we
 SV_0 = elyte.elyte_obj.concentrations
 
 time_start = 0 # Initial time [s]
@@ -67,7 +74,28 @@ plt.ylabel("Concentration [kmol/m^3]")
 plt.xlabel("Time [s]")
 plt.legend(elyte_species_names,loc='center left', bbox_to_anchor=(1, 0.5))
 plt.tight_layout()
-plt.show()
 
+elyte.elyte_obj.equilibrate('TP', solver='gibbs', rtol = 1e-10)
+X = elyte.elyte_obj.X
+#print(elyte.elyte_obj.X)
+#print(np.sum(concentrations))
+
+plt.figure()
+plt.plot([0]*len(elyte_species_names), X,'.-')
+plt.title("Elyte Concentration")
+plt.ylabel("Concentration [kmol/m^3]")
+plt.xlabel("Time [s]")
+plt.legend(elyte_species_names,loc='center left', bbox_to_anchor=(1, 0.5))
+plt.tight_layout()
+
+#print(elyte.elyte_obj.partial_molar_volumes)
+molar_volumes = elyte.elyte_obj.partial_molar_volumes
+
+print(elyte.elyte_obj.concentrations)
+print(molar_volumes)
+print(X)
+print(X/molar_volumes)
+hjk
+plt.show()
 
 

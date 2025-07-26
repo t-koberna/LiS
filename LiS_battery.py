@@ -7,11 +7,11 @@ import numpy as np
 from pathlib import Path
 import sksundae as sun
 from ruamel.yaml import YAML
-from setup import SV_pointer, Solution_Vector_0, Anode, Seperator, Parameters, Cathode
+from setup import SV_pointer, Solution_Vector_0, Anode, Separator, Parameters, Cathode
 from residual import residual
 from post_process import create_plots
 
-# Decide if I am using algebric variables or not (I am workshopping two apraoches for the seperator)
+# Decide if I am using algebraic variables or not (I am work shopping two approaches for the separator)
 # 1 uses algebraics, any other number does not use algebraics
 algebraic = 12
 
@@ -28,7 +28,7 @@ first_step = 1e-15                                                  # Size of th
 
 #==================================================================================================
 #
-#   Read in the input file, create the seperator and electrode objects.
+#   Read in the input file, create the separator and electrode objects.
 #   Create the pointer and set up the solution vector
 #
 #==================================================================================================
@@ -39,8 +39,8 @@ yaml = YAML(typ='safe')
 inputs = yaml.load(path)
 
 params = Parameters(inputs)
-# The Cantera objects are initialzed durring the creation of the following
-sep = Seperator(path, inputs, params)
+# The Cantera objects are initialized during the creation of the following
+sep = Separator(path, inputs, params)
 anode = Anode(path, inputs, sep, params)
 cathode = Cathode(path, inputs, sep, params)
 
@@ -54,7 +54,7 @@ SV_0 = Solution_Vector_0(SV_idx, sep, anode, cathode, params)
 #==================================================================================================
 #
 #   Set termination checks and other simulation options then run the solver.
-#   There is an option to run an equalibriating step before charge or discharge.
+#   There is an option to run an equilibrating step before charge or discharge.
 #
 #==================================================================================================
 
@@ -73,7 +73,7 @@ num_roots = 1                                                       # number of 
 def terminate_check(t,SV,SV_dot,return_val,user_data):
     return_val[0] =  SV[ SV_idx.ptr['thickness_an'][0]]             # [0] is added to extract a single value from the 1x1 array and I avoid a warning
 
-# Zero current equalibrium step (optional)
+# Zero current equilibrium step (optional)
 if params.inputs['simulations']['equilibrate']['enable']:
     
     time_eq = params.inputs['simulations']['equilibrate']['time']
@@ -111,7 +111,7 @@ sim_outputs = np.stack((*np.transpose(solution.y), solution.t))
 
 #==================================================================================================
 #
-#   Process the simulation outputs. Genrate plots (later on I will include a way to save the data)
+#   Process the simulation outputs. Generate plots (later on I will include a way to save the data)
 #
 #==================================================================================================
 
