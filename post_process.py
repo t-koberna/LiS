@@ -54,9 +54,9 @@ def create_plots(SV_idx, sim_outputs, sep, anode, cathode, params):
     G_Li2S = cathode.elyte_obj.standard_gibbs_RT[3]*R*T + R*T*np.log(cathode.elyte_obj.X[3])
     Delta_G_rxn = 8*G_Li2S - 16*G_Li_ion - G_S8
     U_ca = -Delta_G_rxn/(n*F)
-    print(U_ca)
-    print(phi_dl_ca[-1])
-    print(U_ca/phi_dl_ca[-1])
+    #print(U_ca)
+    #print(phi_dl_ca[-1])
+    #print(U_ca/phi_dl_ca[-1])
 
 
     #==================================================================================================

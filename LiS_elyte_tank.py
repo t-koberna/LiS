@@ -32,7 +32,7 @@ print(C_k/sum(C_k))
 print(C_k/elyte.elyte_obj.concentrations)
 molar_volumes = elyte.elyte_obj.partial_molar_volumes
 print(molar_volumes/X)
-we
+
 SV_0 = elyte.elyte_obj.concentrations
 
 time_start = 0 # Initial time [s]

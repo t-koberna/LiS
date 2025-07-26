@@ -79,8 +79,8 @@ parameters:
   simulations:
     equilibrate:
         enable: True                                          # Start with a hold at open circuit?
-        time: 3000                                              # If true, how long is the hold, [s]
-        plot_flag: True                                       # Do you want to generate plots after the equilibration?
+        time: 300                                              # If true, how long is the hold, [s]
+        plot_flag: False                                       # Do you want to generate plots after the equilibration?
     i_ext: 0.1 A/cm2                                          # the external current, [A/m2]
     time_max: 100                                             # max time for the simulation, [s]
     number-bins:

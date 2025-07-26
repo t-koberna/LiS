@@ -65,7 +65,7 @@ class Cathode:
         self.elyte_obj = ct.Solution(path, sep.inputs['electrolyte-phase'])
         self.elyte_obj.TP = params.T, params.P
         C_k_0_elyte = [species['C_k'] for species in sep.inputs['transport']['diffusion-coefficients']]
-        self.elyte_obj.X = C_k_0_elyte # it automatically takes in the concetrations and makes them a fraction
+        self.elyte_obj.X = C_k_0_elyte # it automatically takes in the concentrations and makes them a fraction
         self.surf_obj = ct.Interface(path, self.inputs['surf-phase'], [self.host_obj, self.elyte_obj])
         self.surf_obj.TP = params.T, params.P
 
