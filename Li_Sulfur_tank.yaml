@@ -21,12 +21,12 @@ cell-description:
           name-plot: '$\rm Li+$'
         - species: S8(e)
           D_k: 1e-11
-          C_k: 1.943e-6 # kmol_k/m^3
+          C_k: 0.512e-6 # kmol_k/m^3
           name: S8(e)
           name-plot: '$\rm S_8$'
         - species: S82-(e)
           D_k: 1e-11
-          C_k: 1.943e-6 # kmol_k/m^3
+          C_k: 0.512e-6 # kmol_k/m^3
           name: S82-(e)
           name-plot: '$\rm S_8^{2-}$'
         - species: Li2S8(e)
@@ -76,7 +76,7 @@ parameters:
   P: 101325 Pa
   simulations:
     i_ext: 0.0 A/cm2 # the external current
-    time_max: 10 # max time for the simulation, [s]
+    time_max: 1 # max time for the simulation, [s]
 
 # Cantera inputs:
 phases:
@@ -227,33 +227,33 @@ species:
   note: Dummy species (needed for defining the interfaces)
 
 bulk-elyte-reactions:
-- equation: 16 Li+(e) + 8 S82-(e) <=> 7 S8(e) + 8 Li2S(e)
+- equation: 1 Li+(e) + 0.5 S82-(e) <=> 0.4375 S8(e) + 0.5 Li2S(e)
   id: bulk_1
-  rate-constant: {A: 1.1e-4, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e8, b: 0.0, Ea: 0.0}
 - equation: 8 Li+(e) + 4 S82-(e) <=> 3 S8(e) + 4 Li2S2(e)
   id: bulk_2
-  rate-constant: {A: 1.1e-12, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e8, b: 0.0, Ea: 0.0}
 - equation: 16 Li+(e) + 8 S82-(e) <=> 5 S8(e) + 8 Li2S3(e)
   id: bulk_3
-  rate-constant: {A: 1.1e-12, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e8, b: 0.0, Ea: 0.0}
 - equation: 16 Li+(e) + 8 S82-(e) <=> 4 S8(e) + 8 Li2S4(e)
   id: bulk_4
-  rate-constant: {A: 1.1e-12, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e8, b: 0.0, Ea: 0.0}
 - equation: 16 Li+(e) + 8 S82-(e) <=> 3 S8(e) + 8 Li2S5(e)
   id: bulk_5
-  rate-constant: {A: 1.1e-12, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e8, b: 0.0, Ea: 0.0}
 - equation: 16 Li+(e) + 8 S82-(e) <=> 2 S8(e) + 8 Li2S6(e)
   id: bulk_6
-  rate-constant: {A: 1.1e-12, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e8, b: 0.0, Ea: 0.0}
 - equation: 16 Li+(e) + 8 S82-(e) <=> S8(e) + 8 Li2S7(e)
   id: bulk_7
-  rate-constant: {A: 1.1e-12, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e8, b: 0.0, Ea: 0.0}
 - equation: 2 Li+(e) + S82-(e) <=> Li2S8(e)
   id: bulk_8
-  rate-constant: {A: 1.1e-12, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e8, b: 0.0, Ea: 0.0}
 
 # I think all other equations are combinations of these equations
 # Ex: -2*bulk_2 + bulk_1 + bulk_3 = bulk_9
 - equation: 2 Li2S2(e) <=> Li2S(e) + Li2S3(e)
   id: bulk_9
-  rate-constant: {A: 1.1e-12, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e15, b: 0.0, Ea: 0.0}

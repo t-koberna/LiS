@@ -13,7 +13,7 @@ from post_process import create_plots
 
 # Decide if I am using algebraic variables or not (I am work shopping two approaches for the separator)
 # 1 uses algebraics, any other number does not use algebraics
-algebraic = 12
+algebraic = 1
 
 #==================================================================================================
 #

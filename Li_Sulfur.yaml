@@ -78,11 +78,11 @@ parameters:
   P: 101325 Pa                                                # Cell pressure
   simulations:
     equilibrate:
-        enable: True                                          # Start with a hold at open circuit?
+        enable: False                                          # Start with a hold at open circuit?
         time: 300                                              # If true, how long is the hold, [s]
         plot_flag: False                                       # Do you want to generate plots after the equilibration?
-    i_ext: 0.1 A/cm2                                          # the external current, [A/m2]
-    time_max: 100                                             # max time for the simulation, [s]
+    i_ext: 0.0 A/cm2                                          # the external current, [A/m2]
+    time_max: 10000                                             # max time for the simulation, [s]
     number-bins:
       Li2S: 10
       S8: 10
@@ -281,8 +281,9 @@ lithium-electrolyte-reactions:
   beta: 0.5
 
 carbon-elyte-reactions:
-- equation: 1 Li+(e) + 0.0625 S8(e) + 1 electron <=> 0.5 Li2S(e)
+#- equation: 1 Li+(e) + 0.0625 S8(e) + 1 electron <=> 0.5 Li2S(e)
 #- equation: 16 Li+(e) + 1 S8(e) + 16 electron <=> 8 Li2S(e)
+- equation: 2 Li+(e) + 0.125 S8(e) + 2 electron <=> 1 Li2S(e)
   id: sulfur_reduction_1
   rate-constant: {A: 1.1e11, b: 0.0, Ea: 0.0}
   beta: 0.5
@@ -302,9 +303,10 @@ sulfur-elyte-reactions:
   rate-constant: {A: 1e-4, b: 0.0, Ea: 0.0}
 
 bulk-elyte-reactions: # do I need to standardize these as well?
-- equation: 16 Li+(e) + 8 S82-(e) <=> 7 S8(e) + 8 Li2S(e)
+#- equation: 16 Li+(e) + 8 S82-(e) <=> 7 S8(e) + 8 Li2S(e)
+- equation: 1 Li+(e) + 0.5 S82-(e) <=> 0.4375 S8(e) + 0.5 Li2S(e)
   id: bulk_1
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e11, b: 0.0, Ea: 0.0}
 #- equation: 8 Li+(e) + 4 S82-(e) <=> 3 S8(e) + 4 Li2S2(e)
 #  id: bulk_2
 #  rate-constant: {A: 1.1e5, b: 0.0, Ea: 0.0}

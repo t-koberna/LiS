@@ -165,16 +165,13 @@ def elyte_rates(SV_idx, an, ca, sep, params, i_dl_an, i_dl_ca, SV):
         # the flux crossing the right boundary
         exiting = N_k_elyte[(i+1)*n_elyte_species:(i+1)*n_elyte_species+n_elyte_species]
 
-        # for a 1-D model, the gradient is a single partial derivative. This partial is delta_N_k divided by dy
-        # This sets the gradient for all species in one node
-        # grad_N_k_node_o[i*n_elyte_species:i*n_elyte_species+n_elyte_species] = (entering - exiting)/dy
-
         # Ionic current = sum(z_k*N_k*F) for the node. Only based on transport, not species production
         i_io[i] = F*np.dot((entering - exiting),sep.elyte_obj.charges)
 
+    # for a 1-D model, the gradient is a single partial derivative. 
+    #   This partial is delta_N_k divided by dy
     grad_N_k_node = (N_k_elyte[:-n_elyte_species] - N_k_elyte[n_elyte_species:])/dy
 
-    # print(grad_N_k_node - grad_N_k_node_o)
     #print(i_io)
     # Account for surface and bulk reactions
     s_dot = surface_production(SV, SV_idx, an, ca, sep, n_elyte_nodes, n_elyte_species)
@@ -183,15 +180,17 @@ def elyte_rates(SV_idx, an, ca, sep, params, i_dl_an, i_dl_ca, SV):
 
     # Account for ions entering/leaving the double layer
     #TODO #4
-    dC_k_elyte_dt[0] =  dC_k_elyte_dt[0] + i_dl_an/ct.faraday
+    #make these pointers
+    dC_k_elyte_dt[0] =  dC_k_elyte_dt[0] + i_dl_an/F
     dC_k_elyte_dt[n_elyte_species*(n_elyte_nodes-1)] =  \
-        dC_k_elyte_dt[n_elyte_species*(n_elyte_nodes-1)] - i_dl_ca/ct.faraday
+        dC_k_elyte_dt[n_elyte_species*(n_elyte_nodes-1)] - i_dl_ca/F
 
     return dC_k_elyte_dt, i_io
 
 def surface_production(SV, SV_idx, an, ca, sep, n_elyte_nodes, n_elyte_species):
     '''
     Species production on an electrode surface [kmol/m^2-s]
+    Only adds values for species in the end nodes, the middle nodes have all zeros.
     '''
     s_dot = np.zeros_like(SV[SV_idx.ptr['C_k_elyte']])
     # surface production at the anode
