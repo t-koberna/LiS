@@ -12,7 +12,7 @@ from LiS_functions_2 import bucket, Index_start, residual, plot_results
 import os
 
 save_picture = 1 # saves the data to a folder if this is a 1
-variable_nucleation_rate = 13 # Uses a variable nucleation rate if this is a 1, otherwise the rate is constant
+variable_nucleation_rate = 1 # Uses a variable nucleation rate if this is a 1, otherwise the rate is constant
 
 '''
 Constants
@@ -31,14 +31,15 @@ T = 298.15 # standard temperature [K]
 rho_S8 = 2070 # density of Sulfur (S8) [kg/m^3]
 MW_S8 = 0.25652  # molecular weight [kg/mol]
 mv_S8 = MW_S8/rho_S8 # constant molar volume S_8 [m^3/mol]
+mv_S8 = 1.25e-4 # changed from 1.239e-4 so the numbers are cleaner
 
 '''
 Parameters
 '''
 area_carbon_0 = 1 # initial area of carbon (this is the area where nucleation happens) [m^2]
 # Each of the buckets are the same size, with the exception of the final bucket which will extend to infinity
-n_bucket_S8 = 250 # number of buckets for S8 [-]
-t_bucket_S8 = 1e-9 # the radius range (aka thickness) of each bucket for S8 [m]
+n_bucket_S8 = 200 # number of buckets for S8 [-]
+t_bucket_S8 = 1e-8 # the radius range (aka thickness) of each bucket for S8 [m]
 
 bucket_S8 = bucket(n_bucket_S8,t_bucket_S8,mv_S8,"S_8")
 SV_index = Index_start(n_bucket_S8) # Holds the pointers for the SV vector
@@ -48,8 +49,8 @@ Initialize the State Variable vector
 '''
 sim_inputs = np.zeros(n_bucket_S8 + 2)
 sim_inputs[:SV_index.S8] = np.zeros(n_bucket_S8)
-sim_inputs[SV_index.bm_S8_front] = 0 
-sim_inputs[SV_index.bm_S8_back] = 0 
+sim_inputs[SV_index.bm_S8_front] = bucket_S8.thickness/2
+sim_inputs[SV_index.bm_S8_back] = bucket_S8.thickness/2
 
 time_start = 0 # Initial time [s]
 time_end = t_sim_max[0] #Final time [s]
@@ -63,10 +64,10 @@ Integration
 algvars = []
 
 #[s_k_nuc_S8,s_k_grow_S8] are the first 4 terms in params [mol/m^3]
-grow_rate_per_area = 2e-4#1e-3#1e-3#1e-3#1e-4
+grow_rate_per_area = 2e-3#1e-3#1e-3#1e-3#1e-4
 nuc_rate_per_area = 2e-4#5e-5#5e-5#2e-3#10e-1 
 params = [nuc_rate_per_area,grow_rate_per_area , SV_index, bucket_S8,area_carbon_0, variable_nucleation_rate]
-options =  {'user_data':params, 'rtol':1e-8,'atol':1e-10, 
+options =  {'user_data':params, 'rtol':1e-8,'atol':1e-12, 
             'algebraic_vars_idx':algvars, 'first_step_size':1e-15}
             # , 'compute_initcond':'yp0', 'max_steps':10000}
 solver = dae('ida', residual, **options)

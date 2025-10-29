@@ -141,7 +141,7 @@ def plot_results(plot_flags, time, N_S8, bucket_S8,
     
     cmap = mP.colormaps['plasma']
     plt.rcParams['font.family'] = 'Times' 
-    plt.rcParams['xtick.top'] = plt.rcParams['ytick.right'] = True
+    #plt.rcParams['xtick.top'] = plt.rcParams['ytick.right'] = True
     nS8 = [0]*bucket_S8.n
 
     for i,b in enumerate(N_S8[:,-1]):
@@ -151,13 +151,14 @@ def plot_results(plot_flags, time, N_S8, bucket_S8,
     if biggest_bin == i:
         biggest_bin = biggest_bin -1
 
-    bucket_S8.r_avg_graph = np.array(bucket_S8.r_avg_graph)/(bucket_S8.r_avg_graph[biggest_bin+1])
+    #bucket_S8.r_avg_graph = np.array(bucket_S8.r_avg_graph)/(bucket_S8.r_avg_graph[biggest_bin+1])
     # plots the time evolution of the particle distribution
     if time_stamps_bins == 1:
+        plt.rcParams['mathtext.fontset']='cm'
         mP.rcParams['font.family'] = 'serif'
         mP.rcParams['font.serif'] = 'Times New Roman'
-        plt.rcParams['xtick.top'] = plt.rcParams['ytick.right'] = True
-        fig8 = plt.figure(num=7,figsize=(3,2.25),dpi=250)#,dpi=250)
+        #plt.rcParams['xtick.top'] = plt.rcParams['ytick.right'] = True
+        fig8 = plt.figure(num=7,figsize=(3,2.25),dpi=400)#,dpi=250)
 
         #plot_percs = np.array([0.25,0.5,0.75,1])
         plot_percs = np.array([0.125,0.25,0.5,1])
@@ -171,18 +172,38 @@ def plot_results(plot_flags, time, N_S8, bucket_S8,
                     for ind, ele in enumerate(N_S8):
                         nS8[ind] = ele[i]
                     plt.plot(bucket_S8.r_avg_graph, np.divide(nS8,sum(nS8))*100, linestyle='-', color=plt_clrs[plt_counter],linewidth=2)
+                    #plt.plot(bucket_S8.r_avg_graph, np.divide(nS8,sum(nS8))*100, '.', color=plt_clrs[plt_counter],markersize=2)
                     #plt.plot(bucket_S8.r_avg_graph, nS8, linestyle='-', color=plt_clrs[plt_counter],linewidth=2)
                     plt_counter = plt_counter + 1
+                    print(bm_S8_front[int(el[1])])
         for ind, ele in enumerate(N_S8):
             nS8[ind] = ele[i]
         plt.plot(bucket_S8.r_avg_graph, np.divide(nS8,sum(nS8))*100, linestyle='-', color=plt_clrs[plt_counter],linewidth=2)
+        #plt.plot(bucket_S8.r_avg_graph, np.divide(nS8,sum(nS8))*100, '.', color=plt_clrs[plt_counter],markersize=2)
 
+
+        #plt.axvline(x=bucket_S8.r_avg_graph[biggest_bin+1])
+        #plt.title(bucket_S8.r_avg_graph[biggest_bin+1])
         ax = plt.gca() 
         plt.yticks(fontsize = 8)
         plt.xticks(fontsize = 8)
-        plt.xlim([0,1.01])
+        #plt.xlim([0,1.01])
+        plt.ylim([-.4,10.5])
+        plt.xlim([0,1e-6+bucket_S8.thickness/2*3])
+        plt.xlabel(r"Particle radius [$\mu$m]",fontsize = 10)
+        plt.xticks([0,0.25e-6,0.5e-6,0.75e-6,1e-6],['0.00','0.25','0.50','0.75','1.00'],fontsize = 8)
+        
+        #plt.xticks([0,0.25e-6,0.5e-6,0.75e-6,1e-6],['','','','',''],fontsize = 8)
+        
+        #plt.xticks([0,0.5e-7,1e-7],['0.00','0.05','0.10'],fontsize = 8)
+        #ax.set_xticks([0.25e-7,0.75e-7],['',''], minor=True)
         plt.ylabel("Percent of Particles",fontsize = 10)
-        plt.xlabel(r"Particle radius [-]",fontsize = 10)
+        #plt.xlabel(r"Particle radius [-]",fontsize = 10)
+
+        #plt.axvline(x=0.125e-6+bucket_S8.thickness/2, linestyle='-',linewidth=0.5)
+        #plt.axvline(x=0.25e-6+bucket_S8.thickness/2, linestyle='-',linewidth=0.5)
+        #plt.axvline(x=0.5e-6+bucket_S8.thickness/2, linestyle='-',linewidth=0.5)
+        #plt.axvline(x=1e-6+bucket_S8.thickness/2, linestyle='-',linewidth=0.5)
         plt.tight_layout()
         if variable_nucleation_rate == 1:
             save_fig('Particle_Distribution_var',folder_name)
@@ -191,5 +212,5 @@ def plot_results(plot_flags, time, N_S8, bucket_S8,
     
 def save_fig(pic_name,folder_name):
     if folder_name != None:
-        fp_pic = f"{folder_name}/{pic_name}"+".png"        
-        plt.savefig(fp_pic)
+        fp_pic = f"{folder_name}/{pic_name}" #"+".png"        
+        plt.savefig(fp_pic, format="svg")

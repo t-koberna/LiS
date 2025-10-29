@@ -30,7 +30,6 @@ class Index_start:
     def __init__(self,n_buckets_S8):
         self.S8 = n_buckets_S8                    
         self.bm_S8_front = self.S8
-        self.bm_S8_back = self.bm_S8_front +1
 
 def volume_phase(bucket_phase,n_particles_phase):
     '''
@@ -94,7 +93,6 @@ def residual(t,SV,SV_dot,resid,user_data):
     # read state variable values    
     Np_S8 = SV[:SV_index.S8]
     bm_S8_front = SV[SV_index.bm_S8_front]
-    bm_S8_back = SV[SV_index.bm_S8_back]
 
     bucket_S8 = set_r_avg(bucket_S8, bm_S8_front)
 
@@ -114,14 +112,8 @@ def residual(t,SV,SV_dot,resid,user_data):
     # The leading bookmarks always move
     drdt_S8 = s_k_grow_S8_per_area*bucket_S8.mv
     
-    # Move the trailing bookmarks
-    nuc_cuttoff = 0 # value nucleation needs to be bellow for me to assume the nucleation stage is over 
     # I assume that the process starts with no particles deposited
     resid[SV_index.bm_S8_front] = SV_dot[SV_index.bm_S8_front] - drdt_S8
-    if sum(Np_S8)> 0 and s_k_nuc_S8_per_area <= nuc_cuttoff:
-        resid[SV_index.bm_S8_back] = SV_dot[SV_index.bm_S8_back] - drdt_S8
-    else:
-        resid[SV_index.bm_S8_back] = SV_dot[SV_index.bm_S8_back]
 
 
 def plot_results(plot_flags, time, N_S8, bucket_S8,
@@ -148,7 +140,7 @@ def plot_results(plot_flags, time, N_S8, bucket_S8,
                 N_S8_empty[(front_indx)-indx] = np.copy(destination_row)
     N_S8 = N_S8_empty
     
-    plt.rcParams['xtick.top'] = plt.rcParams['ytick.right'] = True
+    #plt.rcParams['xtick.top'] = plt.rcParams['ytick.right'] = True
 
     for i,b in enumerate(N_S8[:,-1]):
         if b !=0:
@@ -157,13 +149,14 @@ def plot_results(plot_flags, time, N_S8, bucket_S8,
     if biggest_bin == i:
         biggest_bin = biggest_bin -1
 
-    bucket_S8.r_avg_graph = np.array(bucket_S8.r_avg_graph)/(bucket_S8.r_avg_graph[biggest_bin+1])
+    #bucket_S8.r_avg_graph = np.array(bucket_S8.r_avg_graph)/(bucket_S8.r_avg_graph[biggest_bin+1])
     # plots the time evolution of the particle distribution
     if time_stamps_bins == 1:
+        plt.rcParams['mathtext.fontset']='cm'
         mP.rcParams['font.family'] = 'serif'
         mP.rcParams['font.serif'] = 'Times New Roman'
-        plt.rcParams['xtick.top'] = plt.rcParams['ytick.right'] = True
-        fig8 = plt.figure(num=7,figsize=(3,2.25),dpi=250)#,dpi=250)
+        #plt.rcParams['xtick.top'] = plt.rcParams['ytick.right'] = True
+        fig8 = plt.figure(num=7,figsize=(3,2.25),dpi=300)#,dpi=250)
 
         #plot_percs = np.array([0.25,0.5,0.75,1])
         plot_percs = np.array([0.125,0.25,0.5,1])
@@ -183,16 +176,30 @@ def plot_results(plot_flags, time, N_S8, bucket_S8,
             nS8[ind] = ele[i]
         plt.plot(bucket_S8.r_avg_graph, np.divide(nS8,sum(nS8))*100, linestyle='-', color=plt_clrs[plt_counter],linewidth=2)
         
+        #plt.axvline(x=bucket_S8.r_avg_graph[biggest_bin+1], linestyle='-',linewidth=0.5)
+        #plt.title(bucket_S8.r_avg_graph[biggest_bin+1])
         ax = plt.gca() 
         plt.yticks(fontsize = 8)
         plt.xticks(fontsize = 8)
-        plt.xlim([0,1.01])
+        #plt.xlim([0,1.01]),
+        plt.ylim([-.4,10.5])
+        plt.xlim([0,1e-6+bucket_S8.thickness/2*3])
+        plt.xlabel(r"Particle radius [$\mu$m]",fontsize = 10)
+        plt.xticks([0,0.25e-6,0.5e-6,0.75e-6,1e-6],['0.00','0.25','0.50','0.75','1.00'],fontsize = 8)
+        #plt.xticks([0,0.5e-7,1e-7],['0.00','0.05','0.10'],fontsize = 8)
+        #ax.set_xticks([0.25e-7,0.75e-7],['',''], minor=True)
+        #plt.xticks([0,0.125e-7,0.25e-7,0.5e-7,1e-7],['0','0.0125','0.025','0.05','0.1'],fontsize = 8)
         plt.ylabel("Percent of Particles",fontsize = 10)
-        plt.xlabel(r"Particle radius [-]",fontsize = 10)
+        #plt.xlabel(r"Particle radius [-]",fontsize = 10)
+
+        #plt.axvline(x=0.125e-6+bucket_S8.thickness/2, linestyle='-',linewidth=0.5)
+        #plt.axvline(x=0.25e-6+bucket_S8.thickness/2, linestyle='-',linewidth=0.5)
+        #plt.axvline(x=0.5e-6+bucket_S8.thickness/2, linestyle='-',linewidth=0.5)
+        #plt.axvline(x=1e-6+bucket_S8.thickness/2, linestyle='-',linewidth=0.5)
         plt.tight_layout()
         save_fig('Particle_Distribution',folder_name)
     
 def save_fig(pic_name,folder_name):
     if folder_name != None:
-        fp_pic = f"{folder_name}/{pic_name}"+".png"        
-        plt.savefig(fp_pic)
+        fp_pic = f"{folder_name}/{pic_name}" #"+".png"        
+        plt.savefig(fp_pic, transparent=True, format="svg")
