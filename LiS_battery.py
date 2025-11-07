@@ -13,7 +13,7 @@ from post_process import create_plots
 
 # Decide if I am using algebraic variables or not (I am work shopping two approaches for the separator)
 # 1 uses algebraics, any other number does not use algebraics
-algebraic = 1
+algebraic = 12
 
 #==================================================================================================
 #
@@ -21,7 +21,7 @@ algebraic = 1
 #
 #==================================================================================================
 
-rtol = 1e-4                                                         # Relative tolerance
+rtol = 1e-6                                                         # Relative tolerance
 atol = 1e-12                                                        # Absolute tolerance
 first_step = 1e-15                                                  # Size of the initial time step
 

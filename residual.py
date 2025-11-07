@@ -22,15 +22,15 @@ def residual(t,SV,SV_dot,resid,user_data):
     # The potential of the conductor object is held at zero. I set the potential of the elyte
     #   near the electrode as the same as the potential of the double layer
     an.conductor_obj.electric_potential = 0.
-    an.elyte_obj.electric_potential = SV[SV_idx.ptr['phi_dl_an']]
+    an.elyte_obj.electric_potential = -SV[SV_idx.ptr['phi_dl_an']]
     an.elyte_obj.X = SV[SV_idx.ptr['C_k_elyte'][0:n_elyte_species]] # the concentrations in the first elyte node
 
     # The potential of the elyte in the interface is the anode double layer potential, plus the total
     #   drop across the separator (last node minus first node)
     # The potential of the host in the interface is the above potential plus del_phi_dl_ca
     ca.elyte_obj.X = SV[SV_idx.ptr['C_k_elyte'][n_elyte_species*(n_elyte_nodes-1):]] # the concentrations in the final elyte node
-    ca.elyte_obj.electric_potential = 0
-    ca.host_obj.electric_potential = SV[SV_idx.ptr['phi_dl_ca']]
+    ca.elyte_obj.electric_potential = -SV[SV_idx.ptr['phi_dl_ca']]
+    ca.conductor_obj.electric_potential = 0
 
 
     ## Anode
@@ -38,18 +38,17 @@ def residual(t,SV,SV_dot,resid,user_data):
     #   using the same sign convention for both the external and faradic currents. A positive electron
     #   production rate means electrons are exiting the anode, which should correspond to a positive faradic current.
     # The production rates of Li(s) and e- should be equal and opposite
-    sdot_electron_an = an.surf_obj.get_net_production_rates(an.conductor_obj) # rate for electrons, positive if produced
     sdot_Li_an = an.surf_obj.get_net_production_rates(an.bulk_obj) # rate lithium metal, negative if consumed [kmol/m^2-s]
     #print(f" Li {sdot_Li_an} e {sdot_electron_an}")
 
     # I tried to use "interface_current" to check against this but it wouldn't run
-    i_far_an = ct.faraday*sdot_electron_an # [C/kmol]*[kmol/m^2-s] = [A/m^2]
-    i_dl_an = i_ext - i_far_an # [A/m^2]
+    A_frac_an = 1
+    i_dl_an = double_layer_current(an,A_frac_an,i_ext)
     c_dl_an = an.inputs['C_dl'] # [F/m^2]
     #print(i_far_an)
 
     # The delta_phi_dl gets larger when there is a positive double layer current
-    resid[SV_idx.ptr['phi_dl_an']] = SV_dot[SV_idx.ptr['phi_dl_an']] + i_dl_an/c_dl_an # [A/m^2]/[F/m^2]=[C/s-m^2]*[V-m^2/C]=[V/s]
+    resid[SV_idx.ptr['phi_dl_an']] = SV_dot[SV_idx.ptr['phi_dl_an']] - i_dl_an/c_dl_an # [A/m^2]/[F/m^2]=[C/s-m^2]*[V-m^2/C]=[V/s]
     # The anode gets thicker when Li(s) is being produced
     resid[SV_idx.ptr['thickness_an']] = \
           SV_dot[SV_idx.ptr['thickness_an']] - sdot_Li_an*an.bulk_obj.partial_molar_volumes #[kmol/m^2-s]*[m^3/kmol] = [m/s]
@@ -59,16 +58,13 @@ def residual(t,SV,SV_dot,resid,user_data):
     #   conservation of charge
     # During discharge (positive case of the sign convention), electrons enter the cathode and are consumed.
     #   So, a negative rate of production of electrons should correspond to a positive faradic current.
-    sdot_electron_ca = ca.surf_obj.get_net_production_rates(ca.host_obj) # rate electrons, positive if produced
 
     # Fraction of geometric surface area available for electrode-elyte reactions
     #  Placeholder. Should eventually be based on S8(s) and Li2S(s) coverage.
-    A_frac = 1.
-
-    i_far_ca = -ct.faraday * sdot_electron_ca * A_frac # [C/kmol]*[kmol/m^2-s] = [A/m^2]
-    i_dl_ca = i_ext - i_far_ca # [A/m^2]
+    A_frac_ca = 1
+    i_dl_ca = double_layer_current(ca,A_frac_ca,i_ext)
     c_dl_ca = ca.inputs['C_dl'] # [F/m^2]
-    resid[SV_idx.ptr['phi_dl_ca']] = SV_dot[SV_idx.ptr['phi_dl_ca']]  + i_dl_ca/c_dl_ca
+    resid[SV_idx.ptr['phi_dl_ca']] = SV_dot[SV_idx.ptr['phi_dl_ca']]  - i_dl_ca/c_dl_ca
 
     ## Separator
     dC_k_elyte_dt, i_io = elyte_rates(SV_idx, an, ca, sep, params, i_dl_an, i_dl_ca, SV)
@@ -94,12 +90,29 @@ def residual(t,SV,SV_dot,resid,user_data):
         resid[SV_idx.ptr['phi_elyte']] = \
               SV_dot[SV_idx.ptr['phi_elyte']] - multiplier*np.dot(dC_k_elyte_dt_reshape, sep.elyte_obj.charges)
 
+    resid[SV_idx.ptr['phi_elyte']] = SV_dot[SV_idx.ptr['phi_elyte']]
     # Not addressed yet, once dilute solution theory is working, I will add the code for nucleation
     #   and growth. I will switch to concentrated solution theory after that.
     resid[SV_idx.ptr['Li2S']] = SV_dot[SV_idx.ptr['Li2S']]
     resid[SV_idx.ptr['S8']] = SV_dot[SV_idx.ptr['S8']]
     resid[SV_idx.ptr['bm_Li2S']] = SV_dot[SV_idx.ptr['bm_Li2S']]
     resid[SV_idx.ptr['bm_S8']] = SV_dot[SV_idx.ptr['bm_S8']]
+
+def double_layer_current(electrode,A_frac,i_ext):
+    '''
+    electrode - electrode object 
+    A_frac - The fraction of the surface area where the reaction occurs
+    i_ext - The external current
+
+    returns the double layer current
+    '''
+    n_hat = electrode.inputs['unit_vector']   # unit vector for the direction normal to the electrode surface
+    sdot_electron = electrode.surf_obj.get_net_production_rates(electrode.conductor_obj) # rate for electrons, positive if produced
+    i_far = ct.faraday*sdot_electron*A_frac # [C/kmol]*[kmol/m^2-s] = [A/m^2]
+    i_dl = n_hat*i_ext - i_far # [A/m^2]
+
+    return i_dl
+
 
 def elyte_rates(SV_idx, an, ca, sep, params, i_dl_an, i_dl_ca, SV):
     '''
@@ -181,9 +194,9 @@ def elyte_rates(SV_idx, an, ca, sep, params, i_dl_an, i_dl_ca, SV):
     # Account for ions entering/leaving the double layer
     #TODO #4
     #make these pointers
-    dC_k_elyte_dt[0] =  dC_k_elyte_dt[0] + i_dl_an/F
+    dC_k_elyte_dt[0] =  dC_k_elyte_dt[0] + an.inputs['unit_vector']*i_dl_an/F
     dC_k_elyte_dt[n_elyte_species*(n_elyte_nodes-1)] =  \
-        dC_k_elyte_dt[n_elyte_species*(n_elyte_nodes-1)] - i_dl_ca/F
+        dC_k_elyte_dt[n_elyte_species*(n_elyte_nodes-1)]  + ca.inputs['unit_vector']*i_dl_ca/F
 
     return dC_k_elyte_dt, i_io
 

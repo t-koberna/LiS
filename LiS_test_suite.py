@@ -11,7 +11,7 @@ yaml = YAML(typ='safe')
 inputs = yaml.load(path)
 
 i_ext = 0.0
-SV_0 = [2.0]
+SV_0 = [2.5]
 
 params = Parameters(inputs)
 sep = Separator(path, inputs, params)
@@ -20,25 +20,33 @@ anode = Anode(path, inputs, sep, params)
 
 # Change this line for what half cell to test
 electrode = cathode
+#electrode = anode
+
+if isinstance(electrode, Cathode):
+    SV_0 = [2.0]
+    n_hat = -1
+else:
+    SV_0 = [-2.0]
+    SV_0 = [-3.0]
+    n_hat = 1
+
 
 def residual(t,SV,SV_dot,resid,user_data):
     ed, i_ext  = user_data
 
+    ed.elyte_obj.electric_potential = -SV[0]
+    #ed.conductor_obj.electric_potential = SV[0]
+    sdot_electron = ed.surf_obj.get_net_production_rates(ed.conductor_obj)[-1]
+    #print(ed.surf_obj.get_net_production_rates(ed.conductor_obj))
+    #print(ed.surf_obj.get_net_production_rates(ed.elyte_obj))
+    #print(ed.surf_obj.get_net_production_rates(ed.bulk_obj))
     
-    #ca.elyte_obj.X = SV[SV_idx.ptr['C_k_elyte'][n_elyte_species*(n_elyte_nodes-1):]] # the concentrations in the final elyte node
-    if isinstance(electrode, Cathode):
-        ed.elyte_obj.electric_potential = 0
-        ed.host_obj.electric_potential = SV[0]
-        sdot_electron_ca = ed.surf_obj.get_net_production_rates(ed.host_obj) # rate electrons, positive if produced
-        i_far = ct.faraday*sdot_electron_ca # [C/kmol]*[kmol/m^2-s] = [A/m^2]
-
-    else:
-        ed.elyte_obj.electric_potential = SV[0]
-        sdot_electron_ca = ed.surf_obj.get_net_production_rates(ed.conductor_obj)
-        i_far = -ct.faraday*sdot_electron_ca # [C/kmol]*[kmol/m^2-s] = [A/m^2]
-    i_dl = i_ext - i_far # [A/m^2]
+    i_far = ct.faraday*sdot_electron # [C/kmol]*[kmol/m^2-s] = [A/m^2]
+    i_dl = n_hat*i_ext - i_far # [A/m^2]
     c_dl = ed.inputs['C_dl'] # [F/m^2]
-
+    
+    #print(n_hat*i_dl/c_dl)
+    
     resid[0] = SV_dot[0]  - i_dl/c_dl
 
 def residual_Li_Li(t,SV,SV_dot,resid,user_data):
@@ -157,7 +165,7 @@ time_end = params.inputs['simulations']['time_max'] #Final time [s]
 tspan = [time_start,time_end]
 
 options =  {'userdata':(electrode, i_ext), 
-            'rtol':1e-4,'atol':1e-12, 
+            'rtol':1e-6,'atol':1e-12, 
             'algebraic_idx':[], 'first_step':1e-15,}
 
 solver = sun.ida.IDA(residual, **options)
@@ -181,11 +189,13 @@ if isinstance(electrode, Cathode):
     U = -Delta_G_rxn/(n*F)
     electrode_type = "Cathode"
 else:
-    n = 1
+    n = -1
     G_Li_ion = anode.elyte_obj.standard_gibbs_RT[0]*R*T + R*T*np.log(anode.elyte_obj.X[0])
-    G_Li = anode.bulk_obj['Li(b)'].gibbs_mole
-    Delta_G_rxn = G_Li_ion - G_Li
+    #G_Li = anode.bulk_obj['Li(b)'].gibbs_mole #also works, but I want to be consistent 
+    G_Li = anode.bulk_obj.standard_gibbs_RT*R*T
+    Delta_G_rxn = -1*G_Li_ion + 1*G_Li
     U = -Delta_G_rxn/(n*F)
+    U = U*-1 # Delta Phi_dl = -U
     electrode_type = "Anode"
 
 

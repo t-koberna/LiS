@@ -30,7 +30,7 @@ def create_plots(SV_idx, sim_outputs, sep, anode, cathode, params):
     #
     #==================================================================================================
 
-    phi_cell = phi_dl_an + (phi_elyte[-1,:] - phi_elyte[0,:]) + phi_dl_ca               # Total Cell potential, [V]
+    phi_cell = -phi_dl_an + (phi_elyte[-1,:] - phi_elyte[0,:]) + phi_dl_ca               # Total Cell potential, [V]
 
     plot_name_elyte_species = [species['name-plot'] for species in sep.inputs['transport']['diffusion-coefficients']]
     name_elyte_species = [species['name'] for species in sep.inputs['transport']['diffusion-coefficients']]
@@ -45,7 +45,8 @@ def create_plots(SV_idx, sim_outputs, sep, anode, cathode, params):
     G_Li_ion = anode.elyte_obj.standard_gibbs_RT[0]*R*T + R*T*np.log(anode.elyte_obj.X[0])
     G_Li = anode.bulk_obj['Li(b)'].gibbs_mole
     Delta_G_rxn = G_Li_ion - G_Li
-    U_an = -Delta_G_rxn/(n*F)                                                           # The half cell equilibrium potential
+    U_an = Delta_G_rxn/(n*F)                                                           # The half cell equilibrium potential
+    print('anode check, 1 means it matches in eq',phi_dl_an[-1]/U_an)
 
     # Cathode double layer potential
     n = 16
@@ -54,11 +55,8 @@ def create_plots(SV_idx, sim_outputs, sep, anode, cathode, params):
     G_Li2S = cathode.elyte_obj.standard_gibbs_RT[3]*R*T + R*T*np.log(cathode.elyte_obj.X[3])
     Delta_G_rxn = 8*G_Li2S - 16*G_Li_ion - G_S8
     U_ca = -Delta_G_rxn/(n*F)
-    print(U_ca)
-    print(phi_dl_ca[-1])
-    print(U_ca/phi_dl_ca[-1])
+    print('cathode check',phi_dl_ca[-1]/U_ca)
 
-    #waretxdyfcgvhuj
     #==================================================================================================
     #
     #   Create the plots

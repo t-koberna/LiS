@@ -60,13 +60,13 @@ class Cathode:
     '''
     def __init__(self, path, input_file, sep, params):
         self.inputs = input_file['cell-description']['cathode']
-        self.host_obj = ct.Solution(path, self.inputs['host-phase'])
-        self.host_obj.TP = params.T, params.P
+        self.conductor_obj = ct.Solution(path, self.inputs['host-phase'])
+        self.conductor_obj.TP = params.T, params.P
         self.elyte_obj = ct.Solution(path, sep.inputs['electrolyte-phase'])
         self.elyte_obj.TP = params.T, params.P
         C_k_0_elyte = [species['C_k'] for species in sep.inputs['transport']['diffusion-coefficients']]
         self.elyte_obj.X = C_k_0_elyte # it automatically takes in the concentrations and makes them a fraction
-        self.surf_obj = ct.Interface(path, self.inputs['surf-phase'], [self.host_obj, self.elyte_obj])
+        self.surf_obj = ct.Interface(path, self.inputs['surf-phase'], [self.conductor_obj, self.elyte_obj])
         self.surf_obj.TP = params.T, params.P
 
         # Create the conversion phases and the elyte interfaces
@@ -82,7 +82,7 @@ class Cathode:
             self.conversion_obj.append(ct.Solution(path, phase["bulk-name"]))
             self.conversion_obj[i].TP = params.T, params.P
             self.conversion_surf_obj.append(ct.Interface(path, phase["surf-name"],
-                    [self.elyte_obj, self.host_obj, self.conversion_obj[i]]))
+                    [self.elyte_obj, self.conductor_obj, self.conversion_obj[i]]))
 
 
 class SV_pointer:
@@ -126,7 +126,7 @@ def Solution_Vector_0(SV_idx, sep, anode, cathode, params):
         C_k_0_elyte = np.stack((*C_k_0_elyte,*C_k_0))
 
     SV_0 = np.zeros(SV_idx.num_vars)
-    SV_0[SV_idx.ptr['phi_dl_an']] = sep.inputs['phi_0']
+    SV_0[SV_idx.ptr['phi_dl_an']] = -sep.inputs['phi_0']
     SV_0[SV_idx.ptr['thickness_an']] = anode.inputs['thickness']
     SV_0[SV_idx.ptr['phi_elyte']] = np.array([0]*sep.inputs['n_points'])
     SV_0[SV_idx.ptr['C_k_elyte']] = C_k_0_elyte
