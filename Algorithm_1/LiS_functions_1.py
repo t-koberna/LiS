@@ -173,7 +173,7 @@ def plot_results(plot_flags, time, N_S8, bucket_S8,
         #plt.xticks([0,0.5e-7,1e-7,1.5e-7,2.0e-7],['0','0.05','0.10','0.15','0.20'],fontsize = 8)
         plt.xticks([0,0.5e-6,1e-6,1.5e-6,2.0e-6],['0.0','0.5','1.0','1.5','2.0'],fontsize = 8)
         #ax.set_xticks([1.25e-6],[''], minor=True)
-        plt.ylabel("Percent of Particles",fontsize = 10)
+        plt.ylabel(r"Percent of Particles [$\%$]",fontsize = 10)
         plt.tight_layout()
         save_fig('Particle_Distribution',folder_name)
 
@@ -182,15 +182,20 @@ def plot_results(plot_flags, time, N_S8, bucket_S8,
         
         plt.plot(bucket_S8.r_avg_graph, np.divide(nS8,sum(nS8))*100,color=plt_clrs[plt_counter],linewidth=2)
         #plt.xlim([1.005e-7,bucket_S8.r_avg_graph[-1]])
-        plt.xlim([1.5e-6,bucket_S8.r_avg_graph[-1]+bucket_S8.thickness/2])
-        plt.ylim([1e-17,1e1]) #1e-3 for 150 bins
+        #plt.xlim([1.5e-6,bucket_S8.r_avg_graph[-1]+bucket_S8.thickness/2])
+        plt.xlim([1.25e-6,1.5e-6])
+        #plt.ylim([1e-17,1e1]) #1e-3 for 150 bins
+        plt.ylim([1e-9,1e1]) #1e-3 for 150 bins
         plt.yscale('log')
         ax = plt.gca()
         plt.yticks(fontsize = 8)
-        plt.xticks([1.5e-6,2.0e-6],['1.5','2.0'],fontsize = 8)
-        ax.set_yticks([1e0,1e-16])#, fontname='Times New Roman')[r'$10^0$','','','',r'$10^{-16}$']
+        #plt.xticks([1.5e-6,2.0e-6],['1.5','2.0'],fontsize = 8)
+        plt.xticks([1.25e-6,1.5e-6],['1.25','1.5'],fontsize = 8)
+        #ax.set_yticks([1e0,1e-16])#, fontname='Times New Roman')[r'$10^0$','','','',r'$10^{-16}$']
+        ax.set_yticks([1e0,1e-8])#, fontname='Times New Roman')[r'$10^0$','','','',r'$10^{-16}$']
         #minor_locator = mP.ticker.LogLocator(subs=(4)) 
-        ax.set_yticks([1e0,1e-4,1e-8,1e-12,1e-16],['','','','',''], minor=True)
+        #ax.set_yticks([1e0,1e-4,1e-8,1e-12,1e-16],['','','','',''], minor=True)
+        ax.set_yticks([1e-2,1e-4,1e-6],['','',''], minor=True)
         #ax.set_xticks([1.25e-6],[''], minor=True)
         #ax.yaxis.set_minor_locator(minor_locator)
         plt.tight_layout()
@@ -199,5 +204,5 @@ def plot_results(plot_flags, time, N_S8, bucket_S8,
     
 def save_fig(pic_name,folder_name):
     if folder_name != None:
-        fp_pic = f"{folder_name}/{pic_name}" #"+".png"        
+        fp_pic = f"{folder_name}/{pic_name}" +".svg"        
         plt.savefig(fp_pic,transparent=True, format="svg")
