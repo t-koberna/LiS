@@ -212,5 +212,5 @@ def plot_results(plot_flags, time, N_S8, bucket_S8,
     
 def save_fig(pic_name,folder_name):
     if folder_name != None:
-        fp_pic = f"{folder_name}/{pic_name}" #"+".png"        
+        fp_pic = f"{folder_name}/{pic_name}" + ".svg"        
         plt.savefig(fp_pic, format="svg")
