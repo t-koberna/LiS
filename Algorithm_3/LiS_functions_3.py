@@ -82,14 +82,16 @@ def particle_flux_3(bucket, nuc_rate_per_area, leading_bookmark, area_carbon):
 
     return Np_flux
 
-def residual(t,SV,SV_dot,resid,user_data):
+def residual(t,SV,user_data):
     # can this file call the cantera directly or will that be in the user data?
     s_k_nuc_S8_per_area = user_data[0]
     s_k_grow_S8_per_area = user_data[1]
     SV_index = user_data[2]
     bucket_S8 = user_data[3]
     area_carbon_0 = user_data[4]    
-      
+    
+    resid = np.zeros_like(SV)
+
     # read state variable values    
     Np_S8 = SV[:SV_index.S8]
     bm_S8_front = SV[SV_index.bm_S8_front]
@@ -107,13 +109,15 @@ def residual(t,SV,SV_dot,resid,user_data):
     Np_flux_S8 = particle_flux_3(bucket_S8, s_k_nuc_S8_per_area, bm_S8_front, a_carbon)
     
     ## Set residuals 
-    resid[:SV_index.S8] = SV_dot[:SV_index.S8] - Np_flux_S8
+    resid[:SV_index.S8] = Np_flux_S8
     
     # The leading bookmarks always move
     drdt_S8 = s_k_grow_S8_per_area*bucket_S8.mv
     
     # I assume that the process starts with no particles deposited
-    resid[SV_index.bm_S8_front] = SV_dot[SV_index.bm_S8_front] - drdt_S8
+    resid[SV_index.bm_S8_front] = drdt_S8
+
+    return resid
 
 
 def plot_results(plot_flags, time, N_S8, bucket_S8,
@@ -126,7 +130,6 @@ def plot_results(plot_flags, time, N_S8, bucket_S8,
     
     nS8 = [0]*bucket_S8.n
 
-    
     # here is where I remap the data for graphing. I flip the data so the biggest bin is now at 
     # the largest index instead of zero, and shift the bins based on where the bookmarks are
     N_S8_empty = N_S8.copy()*0
@@ -140,8 +143,6 @@ def plot_results(plot_flags, time, N_S8, bucket_S8,
                 N_S8_empty[(front_indx)-indx] = np.copy(destination_row)
     N_S8 = N_S8_empty
     
-    #plt.rcParams['xtick.top'] = plt.rcParams['ytick.right'] = True
-
     for i,b in enumerate(N_S8[:,-1]):
         if b !=0:
             biggest_bin = i
@@ -149,57 +150,41 @@ def plot_results(plot_flags, time, N_S8, bucket_S8,
     if biggest_bin == i:
         biggest_bin = biggest_bin -1
 
-    #bucket_S8.r_avg_graph = np.array(bucket_S8.r_avg_graph)/(bucket_S8.r_avg_graph[biggest_bin+1])
     # plots the time evolution of the particle distribution
     if time_stamps_bins == 1:
         plt.rcParams['mathtext.fontset']='cm'
         mP.rcParams['font.family'] = 'serif'
         mP.rcParams['font.serif'] = 'Times New Roman'
-        #plt.rcParams['xtick.top'] = plt.rcParams['ytick.right'] = True
-        fig8 = plt.figure(num=7,figsize=(3,2.25),dpi=300)#,dpi=250)
+        fig8 = plt.figure(num=7,figsize=(3,2.25),dpi=400)
 
-        #plot_percs = np.array([0.25,0.5,0.75,1])
         plot_percs = np.array([0.125,0.25,0.5,1])
-        time_ind = np.multiply(plot_percs,len(time))
+        time_snapshots = np.multiply(plot_percs,max(time))
         plt_clrs = [cmap(0.1),cmap(0.35),cmap(0.55),cmap(0.75)]
 
         plt_counter = 0
-        for el in enumerate(time_ind):
+        for el in enumerate(time_snapshots):
             for i in range(len(time)):
-                if i == int(el[1]):
+                if time[i] > el[1] and  time[i-1] < el[1]:
                     for ind, ele in enumerate(N_S8):
                         nS8[ind] = ele[i]
                     plt.plot(bucket_S8.r_avg_graph, np.divide(nS8,sum(nS8))*100, linestyle='-', color=plt_clrs[plt_counter],linewidth=2)
-                    #plt.plot(bucket_S8.r_avg_graph, nS8, linestyle='-', color=plt_clrs[plt_counter],linewidth=2)
                     plt_counter = plt_counter + 1
         for ind, ele in enumerate(N_S8):
             nS8[ind] = ele[i]
         plt.plot(bucket_S8.r_avg_graph, np.divide(nS8,sum(nS8))*100, linestyle='-', color=plt_clrs[plt_counter],linewidth=2)
-        
-        #plt.axvline(x=bucket_S8.r_avg_graph[biggest_bin+1], linestyle='-',linewidth=0.5)
-        #plt.title(bucket_S8.r_avg_graph[biggest_bin+1])
+
         ax = plt.gca() 
         plt.yticks(fontsize = 8)
         plt.xticks(fontsize = 8)
-        #plt.xlim([0,1.01]),
         plt.ylim([-.4,10.5])
         plt.xlim([0,1e-6+bucket_S8.thickness/2*3])
         plt.xlabel(r"Particle radius [$\mu$m]",fontsize = 10)
         plt.xticks([0,0.25e-6,0.5e-6,0.75e-6,1e-6],['0.00','0.25','0.50','0.75','1.00'],fontsize = 8)
-        #plt.xticks([0,0.5e-7,1e-7],['0.00','0.05','0.10'],fontsize = 8)
-        #ax.set_xticks([0.25e-7,0.75e-7],['',''], minor=True)
-        #plt.xticks([0,0.125e-7,0.25e-7,0.5e-7,1e-7],['0','0.0125','0.025','0.05','0.1'],fontsize = 8)
         plt.ylabel("Percent of Particles",fontsize = 10)
-        #plt.xlabel(r"Particle radius [-]",fontsize = 10)
-
-        #plt.axvline(x=0.125e-6+bucket_S8.thickness/2, linestyle='-',linewidth=0.5)
-        #plt.axvline(x=0.25e-6+bucket_S8.thickness/2, linestyle='-',linewidth=0.5)
-        #plt.axvline(x=0.5e-6+bucket_S8.thickness/2, linestyle='-',linewidth=0.5)
-        #plt.axvline(x=1e-6+bucket_S8.thickness/2, linestyle='-',linewidth=0.5)
         plt.tight_layout()
         save_fig('Particle_Distribution',folder_name)
     
 def save_fig(pic_name,folder_name):
     if folder_name != None:
         fp_pic = f"{folder_name}/{pic_name}" + ".svg"        
-        plt.savefig(fp_pic, transparent=True, format="svg")
+        plt.savefig(fp_pic, format="svg")

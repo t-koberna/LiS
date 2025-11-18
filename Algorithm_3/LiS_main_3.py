@@ -7,7 +7,7 @@
 # rates for both nucleation and growth 
 import numpy as np
 import matplotlib.pyplot as plt
-from scikits.odes import dae
+from scipy.integrate import solve_ivp
 from LiS_functions_3 import bucket, Index_start, residual, plot_results
 import os
 
@@ -57,23 +57,16 @@ times = np.linspace(time_start,time_end,1001)
 '''
 Integration
 '''
-
-# I am using a DAE solver, but for now there are no algebraic equations
-algvars = []
-
-#[s_k_nuc_S8,s_k_grow_S8] are the first 4 terms in params [mol/m^3]
-grow_rate_per_area = 2e-3#1e-3#1e-3#1e-3#1e-4
-nuc_rate_per_area = 2e-4#5e-5#5e-5#2e-3#10e-1 
+grow_rate_per_area = 2e-3
+nuc_rate_per_area = 2e-4
 params = [nuc_rate_per_area,grow_rate_per_area , SV_index, bucket_S8,area_carbon_0]
-options =  {'user_data':params, 'rtol':1e-9,'atol':1e-12, 
-            'algebraic_vars_idx':algvars, 'first_step_size':1e-15}
-            # , 'compute_initcond':'yp0', 'max_steps':10000}
-solver = dae('ida', residual, **options)
 
-SV_0 = sim_inputs
-SV_dot_0  = np.zeros_like(SV_0)
-solution = solver.solve(times, SV_0, SV_dot_0)
-sim_outputs =np.stack((*np.transpose(solution.values.y), solution.values.t))
+t_span = [time_start,time_end]
+min_time_intervals = 100
+max_t_step = time_end/min_time_intervals
+solution = (solve_ivp(residual,t_span,sim_inputs,method='BDF',
+            args=[params], rtol = 1e-8,atol = 1e-10, max_step = max_t_step))
+sim_outputs =np.stack((*(solution.y), solution.t))
 
 '''
 Post Processing          

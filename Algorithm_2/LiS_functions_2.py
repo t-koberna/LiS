@@ -90,7 +90,7 @@ def particle_flux_2(bucket, nuc_rate_per_area, grow_rate_per_area, n_particles, 
 
     return Np_flux
 
-def residual(t,SV,SV_dot,resid,user_data):
+def residual(t,SV,user_data):
     # can this file call the cantera directly or will that be in the user data?
     s_k_nuc_S8_per_area = user_data[0]
     s_k_grow_S8_per_area = user_data[1]
@@ -98,6 +98,8 @@ def residual(t,SV,SV_dot,resid,user_data):
     bucket_S8 = user_data[3]
     area_carbon_0 = user_data[4]    
     variable_nucleation_rate = user_data[5]
+
+    resid = np.zeros_like(SV)
       
     # read state variable values    
     Np_S8 = SV[:SV_index.S8]
@@ -119,7 +121,7 @@ def residual(t,SV,SV_dot,resid,user_data):
     Np_flux_S8 = particle_flux_2(bucket_S8, s_k_nuc_S8_per_area, s_k_grow_S8_per_area, Np_S8, bm_S8_front, bm_S8_back, a_carbon)
     
     ## Set residuals 
-    resid[:SV_index.S8] = SV_dot[:SV_index.S8] - Np_flux_S8
+    resid[:SV_index.S8] = Np_flux_S8
     
     # The leading bookmarks always move
     drdt_S8 = s_k_grow_S8_per_area*bucket_S8.mv
@@ -127,21 +129,22 @@ def residual(t,SV,SV_dot,resid,user_data):
     # Move the trailing bookmarks
     nuc_cuttoff = 0 # value nucleation needs to be bellow for me to assume the nucleation stage is over 
     # I assume that the process starts with no particles deposited
-    resid[SV_index.bm_S8_front] = SV_dot[SV_index.bm_S8_front] - drdt_S8
+    resid[SV_index.bm_S8_front] = drdt_S8
     if sum(Np_S8)> 0 and s_k_nuc_S8_per_area <= nuc_cuttoff:
-        resid[SV_index.bm_S8_back] = SV_dot[SV_index.bm_S8_back] - drdt_S8
+        resid[SV_index.bm_S8_back] = drdt_S8
     else:
-        resid[SV_index.bm_S8_back] = SV_dot[SV_index.bm_S8_back]
+        resid[SV_index.bm_S8_back] = 0
+
+    return resid
 
 
 def plot_results(plot_flags, time, N_S8, bucket_S8,
-        bm_S8_front, time_end, folder_name, variable_nucleation_rate):
+        bm_S8_front, bm_S8_back, time_end, folder_name, variable_nucleation_rate):
     
     time_stamps_bins = plot_flags
     
     cmap = mP.colormaps['plasma']
     plt.rcParams['font.family'] = 'Times' 
-    #plt.rcParams['xtick.top'] = plt.rcParams['ytick.right'] = True
     nS8 = [0]*bucket_S8.n
 
     for i,b in enumerate(N_S8[:,-1]):
@@ -151,64 +154,63 @@ def plot_results(plot_flags, time, N_S8, bucket_S8,
     if biggest_bin == i:
         biggest_bin = biggest_bin -1
 
-    #bucket_S8.r_avg_graph = np.array(bucket_S8.r_avg_graph)/(bucket_S8.r_avg_graph[biggest_bin+1])
     # plots the time evolution of the particle distribution
     if time_stamps_bins == 1:
         plt.rcParams['mathtext.fontset']='cm'
         mP.rcParams['font.family'] = 'serif'
         mP.rcParams['font.serif'] = 'Times New Roman'
-        #plt.rcParams['xtick.top'] = plt.rcParams['ytick.right'] = True
-        fig8 = plt.figure(num=7,figsize=(3,2.25),dpi=400)#,dpi=250)
+        fig8 = plt.figure(num=7,figsize=(3,2.25),dpi=400)
 
-        #plot_percs = np.array([0.25,0.5,0.75,1])
         plot_percs = np.array([0.125,0.25,0.5,1])
-        time_ind = np.multiply(plot_percs,len(time))
+        time_snapshots = np.multiply(plot_percs,max(time))
         plt_clrs = [cmap(0.1),cmap(0.35),cmap(0.55),cmap(0.75)]
 
         plt_counter = 0
-        for el in enumerate(time_ind):
+        for el in enumerate(time_snapshots):
             for i in range(len(time)):
-                if i == int(el[1]):
+                if time[i] > el[1] and  time[i-1] < el[1]:
                     for ind, ele in enumerate(N_S8):
                         nS8[ind] = ele[i]
                     plt.plot(bucket_S8.r_avg_graph, np.divide(nS8,sum(nS8))*100, linestyle='-', color=plt_clrs[plt_counter],linewidth=2)
-                    #plt.plot(bucket_S8.r_avg_graph, np.divide(nS8,sum(nS8))*100, '.', color=plt_clrs[plt_counter],markersize=2)
-                    #plt.plot(bucket_S8.r_avg_graph, nS8, linestyle='-', color=plt_clrs[plt_counter],linewidth=2)
                     plt_counter = plt_counter + 1
-                    print(bm_S8_front[int(el[1])])
         for ind, ele in enumerate(N_S8):
             nS8[ind] = ele[i]
         plt.plot(bucket_S8.r_avg_graph, np.divide(nS8,sum(nS8))*100, linestyle='-', color=plt_clrs[plt_counter],linewidth=2)
-        #plt.plot(bucket_S8.r_avg_graph, np.divide(nS8,sum(nS8))*100, '.', color=plt_clrs[plt_counter],markersize=2)
 
-
-        #plt.axvline(x=bucket_S8.r_avg_graph[biggest_bin+1])
-        #plt.title(bucket_S8.r_avg_graph[biggest_bin+1])
         ax = plt.gca() 
         plt.yticks(fontsize = 8)
         plt.xticks(fontsize = 8)
-        #plt.xlim([0,1.01])
         plt.ylim([-.4,10.5])
         plt.xlim([0,1e-6+bucket_S8.thickness/2*3])
         plt.xlabel(r"Particle radius [$\mu$m]",fontsize = 10)
         plt.xticks([0,0.25e-6,0.5e-6,0.75e-6,1e-6],['0.00','0.25','0.50','0.75','1.00'],fontsize = 8)
-        
-        #plt.xticks([0,0.25e-6,0.5e-6,0.75e-6,1e-6],['','','','',''],fontsize = 8)
-        
-        #plt.xticks([0,0.5e-7,1e-7],['0.00','0.05','0.10'],fontsize = 8)
-        #ax.set_xticks([0.25e-7,0.75e-7],['',''], minor=True)
         plt.ylabel("Percent of Particles",fontsize = 10)
-        #plt.xlabel(r"Particle radius [-]",fontsize = 10)
-
-        #plt.axvline(x=0.125e-6+bucket_S8.thickness/2, linestyle='-',linewidth=0.5)
-        #plt.axvline(x=0.25e-6+bucket_S8.thickness/2, linestyle='-',linewidth=0.5)
-        #plt.axvline(x=0.5e-6+bucket_S8.thickness/2, linestyle='-',linewidth=0.5)
-        #plt.axvline(x=1e-6+bucket_S8.thickness/2, linestyle='-',linewidth=0.5)
         plt.tight_layout()
         if variable_nucleation_rate == 1:
             save_fig('Particle_Distribution_var',folder_name)
         else:
             save_fig('Particle_Distribution_cons',folder_name)
+        
+        # Plots confirming the solver takes small steps when the bookmarks cross the thresholds
+        fig6, (ax10, ax11) = plt.subplots(2)
+        ax10.set_title('Leading Bookmark')    
+        ax11.set_title('Trailing Bookmark') 
+        for i in range(1, int(max(bm_S8_front)/bucket_S8.thickness)): # plot every bin threshold
+            ax10.axhline(y=bucket_S8.thickness*i,linestyle='dashed',color='silver')
+            ax11.axhline(y=bucket_S8.thickness*i,linestyle='dashed',color='silver')
+        ax10.plot(time,bm_S8_front,'.')
+        ax11.plot(time,bm_S8_back,'.')
+        ax10.set_ylabel(r'Distance [m]',fontsize=12)
+        ax11.set_ylabel(r'Distance [m]',fontsize=12)
+        ax11.set_xlabel(r'time [s]',fontsize=12)
+
+        ax10.set_xlim([0.5,0.6])
+        ax11.set_xlim([0.5,0.6])
+        ax10.set_ylim([1.2e-7,1.6e-7])
+        ax11.set_ylim([0,3e-8])
+
+        fig6.tight_layout()
+        save_fig('bookmark_movement',folder_name)
     
 def save_fig(pic_name,folder_name):
     if folder_name != None:
