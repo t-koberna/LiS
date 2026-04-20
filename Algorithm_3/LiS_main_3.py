@@ -27,18 +27,19 @@ t_sim_max = [4] # the maximum time the battery will be held at each current [s]
 T = 298.15 # standard temperature [K]
 
 ## Material Properties
-rho_S8 = 2070 # density of Sulfur (S8) [kg/m^3]
-MW_S8 = 0.25652  # molecular weight [kg/mol]
+rho_S8 = 2.14e3 + 0*2070 # density of Sulfur (S8) [kg/m^3]
+MW_S8 = 48.88e-3 +0*0.25652  # molecular weight [kg/mol]
 mv_S8 = MW_S8/rho_S8 # constant molar volume S_8 [m^3/mol]
-mv_S8 = 1.25e-4 # changed from 1.239e-4 so the numbers are cleaner
+
+mv_S8 = 1.25e-4 # changed from 1.239e-4 so the numbers are cleaner  2.28411214953271e-05
 
 '''
 Parameters
 '''
-area_carbon_0 = 1 # initial area of carbon (this is the area where nucleation happens) [m^2]
+area_carbon_0 = 1 +0*1e-5 # initial area of carbon (this is the area where nucleation happens) [m^2]
 # Each of the buckets are the same size, with the exception of the final bucket which will extend to infinity
 n_bucket_S8 = 200 # number of buckets for S8 [-]
-t_bucket_S8 = 1e-8 # the radius range (aka thickness) of each bucket for S8 [m]
+t_bucket_S8 = 1e-8+ 0*1e-7 # the radius range (aka thickness) of each bucket for S8 [m]
 
 bucket_S8 = bucket(n_bucket_S8,t_bucket_S8,mv_S8,"S_8")
 SV_index = Index_start(n_bucket_S8) # Holds the pointers for the SV vector
@@ -57,8 +58,8 @@ times = np.linspace(time_start,time_end,1001)
 '''
 Integration
 '''
-grow_rate_per_area = 2e-3
-nuc_rate_per_area = 2e-4
+grow_rate_per_area = 2e-3 + 0*5.18e-7
+nuc_rate_per_area = 2e-4+ 0*2.46e11
 params = [nuc_rate_per_area,grow_rate_per_area , SV_index, bucket_S8,area_carbon_0]
 
 t_span = [time_start,time_end]
@@ -74,6 +75,7 @@ Post Processing
 N_S8  = sim_outputs[:SV_index.S8]
 bm_S8_front = sim_outputs[SV_index.bm_S8_front]
 time = sim_outputs[-1]
+
 
 if save_picture == 1:
     folder_name = "Algorithm_3"

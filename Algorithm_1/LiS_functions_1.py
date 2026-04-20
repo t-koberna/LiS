@@ -29,8 +29,6 @@ class Index_start:
     '''
     def __init__(self,n_buckets_S8):
         self.S8 = n_buckets_S8                    
-        self.bm_S8_front = self.S8
-        self.bm_S8_back = self.bm_S8_front +1
 
 def volume_phase(bucket_phase,n_particles_phase):
     '''
@@ -86,8 +84,6 @@ def residual(t,SV,user_data):
 
     # read state variable values    
     Np_S8 = SV[:SV_index.S8]
-    bm_S8_front = SV[SV_index.bm_S8_front]
-    bm_S8_back = SV[SV_index.bm_S8_back]
 
     # Used to cut off nucleation
     if t>0.5:
@@ -105,15 +101,6 @@ def residual(t,SV,user_data):
     # The leading bookmarks always move
     drdt_S8 = s_k_grow_S8_per_area*bucket_S8.mv
     
-    # Move the trailing bookmarks
-    nuc_cuttoff = 0 # value nucleation needs to be bellow for me to assume the nucleation stage is over 
-    # I assume that the process starts with no particles deposited
-    resid[SV_index.bm_S8_front] = drdt_S8
-    if sum(Np_S8)> 0 and s_k_nuc_S8_per_area <= nuc_cuttoff:
-        resid[SV_index.bm_S8_back] = drdt_S8
-    else:
-        resid[SV_index.bm_S8_back] = 0
-
     return resid
 
 def plot_results(plot_flags, time, N_S8, bucket_S8,

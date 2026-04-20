@@ -57,7 +57,10 @@ def cs_area_phase(bucket_phase,n_particles_phase):
     CS_area_phase = [0]*bucket_phase.n
     for i in range(bucket_phase.n):
         CS_area_phase[i] = np.pi*((bucket_phase.r_avg[i])**2)*n_particles_phase[i]
-    CS_area_phase = sum(CS_area_phase) 
+        #print(bucket_phase.r_avg[i])
+        
+    CS_area_phase = sum(CS_area_phase)
+    #print(CS_area_phase) 
     return CS_area_phase
 
 def area_carbon(bucket_S8,n_particles_S8,area_carbon_0):
@@ -66,6 +69,9 @@ def area_carbon(bucket_S8,n_particles_S8,area_carbon_0):
     of carbon that is available for nucleation
     '''
     CS_area_S8 = cs_area_phase(bucket_S8,n_particles_S8)
+    #print(CS_area_S8/area_carbon_0)
+    #theta = 1 - np.exp(-CS_area_S8/area_carbon_0)
+    #area_carbon = (1- theta)*area_carbon_0 #area_carbon_0 - CS_area_S8
     area_carbon = area_carbon_0 - CS_area_S8
 
     return area_carbon
@@ -99,10 +105,10 @@ def residual(t,SV,user_data):
     bucket_S8 = set_r_avg(bucket_S8, bm_S8_front)
 
     # Used to cut off nucleation
-    if t>0.5:
+    if t>0.5:#0.5: 500
         s_k_nuc_S8_per_area = 0
     else:
-        s_k_nuc_S8_per_area = s_k_nuc_S8_per_area*np.exp(-0.85*(t*2-0.25)**2)*2
+        s_k_nuc_S8_per_area = s_k_nuc_S8_per_area*np.exp(-0.85*(t*2-0.25)**2)*2 #make flat for other approach
     
     a_carbon = area_carbon(bucket_S8,Np_S8,area_carbon_0)
     # get the particle deposition rates due to nucleation [particles/m^2]
@@ -112,8 +118,13 @@ def residual(t,SV,user_data):
     resid[:SV_index.S8] = Np_flux_S8
     
     # The leading bookmarks always move
+    #CS_area_S8 = cs_area_phase(bucket_S8,Np_S8)
+    #theta = 1 - np.exp(-CS_area_S8/area_carbon_0)
+    #drdt_S8 = s_k_grow_S8_per_area*bucket_S8.mv/(1e-12+CS_area_S8)#/(1- theta)
     drdt_S8 = s_k_grow_S8_per_area*bucket_S8.mv
-    
+    #print(CS_area_S8)
+    #print(drdt_S8)
+
     # I assume that the process starts with no particles deposited
     resid[SV_index.bm_S8_front] = drdt_S8
 
@@ -183,8 +194,55 @@ def plot_results(plot_flags, time, N_S8, bucket_S8,
         plt.ylabel("Percent of Particles",fontsize = 10)
         plt.tight_layout()
         save_fig('Particle_Distribution',folder_name)
+
+
+        #fig8 = plt.figure(num=8,figsize=(.9,.675),dpi=300)
+        #fig8 = plt.figure(num=8,figsize=(1,.75),dpi=300)
+        fig8 = plt.figure(num=8,figsize=(1.2,.9),dpi=300)
+        #fig8 = plt.figure(num=8,figsize=(3,2.25),dpi=300)
+        plt_counter = 0
+        for el in enumerate(time_snapshots):
+            for i in range(len(time)):
+                if time[i] > el[1] and  time[i-1] < el[1]:
+                    for ind, ele in enumerate(N_S8):
+                        nS8[ind] = ele[i]
+                    plt.plot(bucket_S8.r_avg_graph, np.divide(nS8,sum(nS8))*100, linestyle='-', color=plt_clrs[plt_counter],linewidth=1)
+                    plt_counter = plt_counter + 1
+        for ind, ele in enumerate(N_S8):
+            nS8[ind] = ele[i]
+        plt.plot(bucket_S8.r_avg_graph, np.divide(nS8,sum(nS8))*100, linestyle='-', color=plt_clrs[plt_counter],linewidth=1)
+        #print(nS8)
+        ax = plt.gca() 
+        plt.yticks(fontsize = 6)
+        plt.xticks(fontsize = 6)
+        plt.ylim([0,10])
+        plt.xlim([0,1e-6+bucket_S8.thickness/2*4])
+        plt.xlabel(r"r [$\mu$m]",fontsize = 8, labelpad=-5)
+        plt.xticks([0,0.25e-6,0.5e-6,0.75e-6,1e-6],['0','','','','1'])
+        plt.yticks([0,5,10],['1','','10'])
+        plt.ylabel(r"[$\%$]",fontsize = 8,labelpad=-5)
+        ax.tick_params(axis='x', which='major', length=2, pad = 1)
+        ax.tick_params(axis='y', which='major', length=2, pad = 1)
+        plt.tight_layout()
+        save_fig('Particle_Distribution_TOC',folder_name)
+
+# Plots confirming the solver takes small steps when the bookmarks cross the thresholds
+        fig6, (ax10) = plt.subplots(1)
+        ax10.set_title('Leading Bookmark')    
+        for i in range(1, int(max(bm_S8_front)/bucket_S8.thickness)): # plot every bin threshold
+            ax10.axhline(y=bucket_S8.thickness*i,linestyle='dashed',color='silver')
+        ax10.plot(time,bm_S8_front,'.')
+        ax10.set_ylabel(r'Distance [m]',fontsize=12)
+
+        #ax10.set_xlim([0.5,0.6])
+        #ax10.set_ylim([1.2e-7,1.6e-7])
+
+        fig6.tight_layout()
+
+    
+
     
 def save_fig(pic_name,folder_name):
     if folder_name != None:
         fp_pic = f"{folder_name}/{pic_name}" + ".svg"        
-        plt.savefig(fp_pic, format="svg")
+        plt.savefig(fp_pic,transparent=True, format="svg")

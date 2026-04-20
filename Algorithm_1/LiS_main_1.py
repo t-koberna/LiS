@@ -46,10 +46,8 @@ SV_index = Index_start(n_bucket_S8) # Holds the pointers for the SV vector
 '''
 Initialize the State Variable vector
 '''
-sim_inputs = np.zeros(n_bucket_S8 + 2)
+sim_inputs = np.zeros(n_bucket_S8)
 sim_inputs[:SV_index.S8] = np.zeros(n_bucket_S8)
-sim_inputs[SV_index.bm_S8_front] = bucket_S8.thickness/2
-sim_inputs[SV_index.bm_S8_back] = bucket_S8.thickness/2
 
 time_start = 0 # Initial time [s]
 time_end = t_sim_max[0] #Final time [s]
@@ -73,8 +71,6 @@ sim_outputs =np.stack((*(solution.y), solution.t))
 Post Processing          
 '''
 N_S8  = sim_outputs[:SV_index.S8]
-bm_S8_front = sim_outputs[SV_index.bm_S8_front]
-bm_S8_back = sim_outputs[SV_index.bm_S8_back]
 time = sim_outputs[-1]
 
 if save_picture == 1:
