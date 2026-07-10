@@ -1,0 +1,214 @@
+#===============================================================================
+#  input_template.yaml
+#
+#  User inputs for bat-can model creation and running.
+#===============================================================================
+
+cell-description:
+    
+  separator:
+    electrolyte-phase: 'electrolyte' # Cantera phase name
+    n_points: 1
+    thickness: 30e-2  # separator thickness, m
+    transport:
+      mobile-ion:  'Li+(e)' # Species name for Li+ in elyte.
+      model: 'dilute-solution'
+      diffusion-coefficients:
+        #- species: 'Li+(e)'
+        #  D_k: 1e-5
+        #  C_k: 1.024e-6 # kmol_k/m^3
+        #  name: 'Li+(e)'
+        #  name-plot: '$\rm Li+$'
+        #- species: S8(e)
+        #  D_k: 1e-11
+        #  C_k: 0.512e-6 # kmol_k/m^3
+        #  name: S8(e)
+        #  name-plot: '$\rm S_8$'
+        #- species: S82-(e)
+        #  D_k: 1e-11
+        #  C_k: 0.512e-6 # kmol_k/m^3
+        #  name: S82-(e)
+        #  name-plot: '$\rm S_8^{2-}$'
+        - species: Li2S8(e)
+          D_k: 6e-11
+          C_k: 1.0e-2 # kmol_k/m^3
+          name: Li2S8(e)
+          name-plot: '$\rm Li_2S_8$'
+        - species: Li2S7(e)
+          D_k: 1e-10
+          C_k: 1.0e-2 # kmol_k/m^3
+          name: Li2S7(e)
+          name-plot: '$\rm Li_2S_7$'
+        - species: Li2S6(e)
+          D_k: 6e-11
+          C_k: 1.0e-2 # kmol_k/m^3
+          name: Li2S6(e)
+          name-plot: '$\rm Li_2S_6$'
+        - species: Li2S5(e)
+          D_k: 1e-10
+          C_k: 1.0e-2 # kmol_k/m^3
+          name: Li2S5(e)
+          name-plot: '$\rm Li_2S_5$'
+        - species: Li2S4(e)
+          D_k: 1e-10
+          C_k: 1.0e-2 # kmol_k/m^3
+          name: Li2S4(e)
+          name-plot: '$\rm Li_2S_4$'
+        - species: Li2S3(e)
+          D_k: 1e-10
+          C_k: 1.0e-2 # kmol_k/m^3
+          name: Li2S3(e)
+          name-plot: '$\rm Li_2S_3$'
+        - species: Li2S2(e)
+          D_k: 1e-10
+          C_k: 1.0e-2 # kmol_k/m^3
+          name: Li2S2(e)
+          name-plot: '$\rm Li_2S_2$'
+        - species: Li2S(e)
+          D_k: 1.1e-10
+          C_k: 1.0e-2 # kmol_k/m^3
+          name: 'Li2S(e)'
+          name-plot: '$\rm Li_2S$'
+   
+# Simulation parameters:
+parameters:
+  T: 25.15 C
+  P: 101325 Pa
+  simulations:
+    i_ext: 0.0 A/cm2 # the external current
+    time_max: 0.0012 # max time for the simulation, [s]
+
+# Cantera inputs:
+phases:
+- name: electrolyte
+  thermo: ideal-condensed
+  elements: [Li, E, S]
+  species: [Li2S8(e), Li2S7(e), Li2S6(e), Li2S5(e), Li2S4(e), Li2S3(e), Li2S2(e), Li2S(e)]
+  state:
+    T: 300.0
+    P: 1 atm
+    X: {Li2S8(e): 1.821e-4, Li2S7(e): 1.0e-20, Li2S6(e): 3.314e-4, Li2S5(e): 1.0e-20, 
+      Li2S4(e): 2.046e-5, Li2S3(e): 1.0e-20, Li2S2(e): 5.348e-10, Li2S(e): 8.456e-13}
+  standard-concentration-basis: unity
+  kinetics: gas
+  reactions: [bulk-elyte-reactions]
+
+species:
+- name: Li2S8(e)
+  composition: {Li: 2, S: 8}
+  thermo:
+    model: constant-cp
+    h0: -1230.1763174657 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 86.156 cm^3/mol
+- name: Li2S7(e)
+  composition: {Li: 2, S: 7}
+  thermo:
+    model: constant-cp
+    h0: -1233.00413453103 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 82.43 cm^3/mol 
+- name: Li2S6(e)
+  composition: {Li: 2, S: 6}
+  thermo:
+    model: constant-cp
+    h0: -1241.08 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 78.703 cm^3/mol
+- name: Li2S5(e)
+  composition: {Li: 2, S: 5}
+  thermo:
+    model: constant-cp
+    h0: -1212.4 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 73.14 cm^3/mol 
+- name: Li2S4(e)
+  composition: {Li: 2, S: 4}
+  thermo:
+    model: constant-cp
+    h0: -1230.99 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 67.581 cm^3/mol 
+- name: Li2S3(e)
+  composition: {Li: 2, S: 3}
+  thermo:
+    model: constant-cp
+    h0: -1191.81 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 59.678 cm^3/mol
+- name: Li2S2(e)
+  composition: {Li: 2, S: 2}
+  thermo:
+    model: constant-cp
+    h0: -1139.5 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 49.197 cm^3/mol
+- name: Li2S(e)
+  composition: {Li: 2, S: 1}
+  thermo:
+    model: constant-cp
+    h0: -1158.08 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 27.5 cm^3/mol
+- name: (dummy)
+  composition: {}
+  thermo:
+    model: constant-cp
+    h0: 0.0 kJ/mol
+    s0: 0.0 J/mol/K
+  note: Dummy species (needed for defining the interfaces)
+
+bulk-elyte-reactions:
+- equation: 1 Li2S2(e) <=> 0.5 Li2S3(e) + 0.5 Li2S(e)
+  id: bulk_1
+  rate-constant: {A: 1.1e1, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S3(e) <=> 0.5 Li2S4(e) + 0.5 Li2S2(e)
+  id: bulk_2
+  rate-constant: {A: 1.1e1, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S3(e) <=> 0.5 Li2S5(e) + 0.5 Li2S(e)
+  id: bulk_3
+  rate-constant: {A: 1.1e1, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S4(e) <=> 0.5 Li2S5(e) + 0.5 Li2S3(e)
+  id: bulk_4
+  rate-constant: {A: 1.1e1, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S4(e) <=> 0.5 Li2S6(e) + 0.5 Li2S2(e)
+  id: bulk_5
+  rate-constant: {A: 1.1e1, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S4(e) <=> 0.5 Li2S7(e) + 0.5 Li2S(e)
+  id: bulk_6
+  rate-constant: {A: 1.1e1, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S5(e) <=> 0.5 Li2S6(e) + 0.5 Li2S4(e)
+  id: bulk_7
+  rate-constant: {A: 1.1e1, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S5(e) <=> 0.5 Li2S7(e) + 0.5 Li2S3(e)
+  id: bulk_8
+  rate-constant: {A: 1.1e1, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S5(e) <=> 0.5 Li2S8(e) + 0.5 Li2S2(e)
+  id: bulk_9
+  rate-constant: {A: 1.1e1, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S6(e) <=> 0.5 Li2S7(e) + 0.5 Li2S5(e)
+  id: bulk_10
+  rate-constant: {A: 1.1e1, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S6(e) <=> 0.5 Li2S8(e) + 0.5 Li2S4(e)
+  id: bulk_11
+  rate-constant: {A: 1.1e1, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S7(e) <=> 0.5 Li2S8(e) + 0.5 Li2S6(e)
+  id: bulk_12
+  rate-constant: {A: 1.1e1, b: 0.0, Ea: 0.0}
+
