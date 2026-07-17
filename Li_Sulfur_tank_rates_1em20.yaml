@@ -103,8 +103,8 @@ cell-description:
     surf-phase_S8: 'sulfur_surf'       
     host-phase_Li2S: 'lithium_sulfide'                                      # Cantera phase name
     surf-phase_Li2S: 'lithium_sulfide_surf' 
-    mass-S8: 2e-3    # kg of S8(s)  
-    mass-Li2S: 2e-3    # kg of S8(s)                                        
+    mass-S8: 2e-13    # kg of S8(s)  
+    mass-Li2S: 2e-13    # kg of S8(s)                                        
     #conversion-phases:                                        # Phases used for growth
       #- bulk-name: "sulfur"                                   
       #  surf-name: "sulfur_surf"                           
@@ -468,145 +468,153 @@ species:
 lithium-sulfide-elyte-reactions:
 - equation: Li2S(e) <=> Li2S(s)
   id: LiSulfur_deposition
-  rate-constant: {A: 0.5e3, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 0.5e-3, b: 0.0, Ea: 0.0}
 
 sulfur-elyte-reactions:
 - equation: S8(s) <=> S8(e)
   id: sulfur_dissolution
-  rate-constant: {A: 1.9e1, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.9e-13, b: 0.0, Ea: 0.0}
 
 bulk-elyte-reactions:
 - equation: 1 S8(e) <=> 1 S7(e) + 1 S(e)
   id: sulfur_disproportionation_1
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e-13, b: 0.0, Ea: 0.0}
+  #rate-constant: {A: 1.1e-180, b: 0.0, Ea: 0.0}
+
 - equation: 1 S7(e) <=> 1 S6(e) + 1 S(e)
   id: sulfur_disproportionation_2
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e-5, b: 0.0, Ea: 0.0}
 - equation: 1 S6(e) <=> 1 S5(e) + 1 S(e)
   id: sulfur_disproportionation_3
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e-5, b: 0.0, Ea: 0.0}
 - equation: 1 S5(e) <=> 1 S4(e) + 1 S(e)
   id: sulfur_disproportionation_4
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e-5, b: 0.0, Ea: 0.0}
 - equation: 1 S4(e) <=> 1 S3(e) + 1 S(e)
   id: sulfur_disproportionation_5
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e-5, b: 0.0, Ea: 0.0}
 - equation: 1 S3(e) <=> 1 S2(e) + 1 S(e)
   id: sulfur_disproportionation_6
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e-5, b: 0.0, Ea: 0.0}
 - equation: 1 S2(e) <=> 2 S(e)
   id: sulfur_disproportionation_7
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e-5, b: 0.0, Ea: 0.0}
 - equation: 1 S8(e) <=> 1 S6(e) + 1 S2(e)
   id: sulfur_disproportionation_8
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e-13, b: 0.0, Ea: 0.0}
+  #rate-constant: {A: 1.1e-180, b: 0.0, Ea: 0.0}
+
 - equation: 1 S8(e) <=> 1 S5(e) + 1 S3(e)
   id: sulfur_disproportionation_9
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e-13, b: 0.0, Ea: 0.0}
+  #rate-constant: {A: 1.1e-180, b: 0.0, Ea: 0.0}
+
 - equation: 1 S8(e) <=> 2 S4(e)
   id: sulfur_disproportionation_10
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}  
+  rate-constant: {A: 1.1e-13, b: 0.0, Ea: 0.0}
+  #rate-constant: {A: 1.1e-180, b: 0.0, Ea: 0.0}
+
 - equation: 1 S7(e) <=> 1 S5(e) + 1 S2(e)
   id: sulfur_disproportionation_11
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}  
+  rate-constant: {A: 1.1e-5, b: 0.0, Ea: 0.0}  
 - equation: 1 S7(e) <=> 1 S4(e) + 1 S3(e)
   id: sulfur_disproportionation_12
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}  
+  rate-constant: {A: 1.1e-5, b: 0.0, Ea: 0.0}  
 - equation: 1 S6(e) <=> 1 S4(e) + 1 S2(e)
   id: sulfur_disproportionation_13
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e-5, b: 0.0, Ea: 0.0}
 - equation: 1 S6(e) <=> 2 S3(e) 
   id: sulfur_disproportionation_14
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e-5, b: 0.0, Ea: 0.0}
 - equation: 1 S5(e) <=> 1 S3(e) + 1 S2(e)
   id: sulfur_disproportionation_15
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e-5, b: 0.0, Ea: 0.0}
 - equation: 1 S4(e) <=> 2 S2(e)
   id: sulfur_disproportionation_16
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e-5, b: 0.0, Ea: 0.0}
 
 - equation: 1 Li2S(e) + 1 S(e) <=> 1 Li2S2(e) 
   id: LiSn_combination_1
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e10, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S2(e) + 1 S(e) <=> 1 Li2S3(e) 
   id: LiSn_combination_2
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e12, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S3(e) + 1 S(e) <=> 1 Li2S4(e) 
   id: LiSn_combination_3
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e12, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S4(e) + 1 S(e) <=> 1 Li2S5(e) 
   id: LiSn_combination_4
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e13, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S5(e) + 1 S(e) <=> 1 Li2S6(e) 
   id: LiSn_combination_5
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e12, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S6(e) + 1 S(e) <=> 1 Li2S7(e) 
   id: LiSn_combination_6
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e12, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S7(e) + 1 S(e) <=> 1 Li2S8(e) 
   id: LiSn_combination_7
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e11, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S(e) + 1 S2(e) <=> 1 Li2S3(e) 
   id: LiSn_combination_8
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e10, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S(e) + 1 S3(e) <=> 1 Li2S4(e) 
   id: LiSn_combination_9
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e10, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S(e) + 1 S4(e) <=> 1 Li2S5(e) 
   id: LiSn_combination_10
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e10, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S(e) + 1 S5(e) <=> 1 Li2S6(e) 
   id: LiSn_combination_11
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e10, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S(e) + 1 S6(e) <=> 1 Li2S7(e) 
   id: LiSn_combination_12
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e9, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S(e) + 1 S7(e) <=> 1 Li2S8(e) 
   id: LiSn_combination_13
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e10, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S2(e) + 1 S2(e) <=> 1 Li2S4(e) 
   id: LiSn_combination_14
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e11, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S2(e) + 1 S3(e) <=> 1 Li2S5(e) 
   id: LiSn_combination_15
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e11, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S2(e) + 1 S4(e) <=> 1 Li2S6(e) 
   id: LiSn_combination_16
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e11, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S2(e) + 1 S5(e) <=> 1 Li2S7(e) 
   id: LiSn_combination_17
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e11, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S2(e) + 1 S6(e) <=> 1 Li2S8(e) 
   id: LiSn_combination_18
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e10, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S3(e) + 1 S2(e) <=> 1 Li2S5(e) 
   id: LiSn_combination_19
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e11, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S3(e) + 1 S3(e) <=> 1 Li2S6(e) 
   id: LiSn_combination_20
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e11, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S3(e) + 1 S4(e) <=> 1 Li2S7(e) 
   id: LiSn_combination_21
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e11, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S3(e) + 1 S5(e) <=> 1 Li2S8(e) 
   id: LiSn_combination_22
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e12, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S4(e) + 1 S2(e) <=> 1 Li2S6(e) 
   id: LiSn_combination_23
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e11, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S4(e) + 1 S3(e) <=> 1 Li2S7(e) 
   id: LiSn_combination_24
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e12, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S4(e) + 1 S4(e) <=> 1 Li2S8(e) 
   id: LiSn_combination_25
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e12, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S5(e) + 1 S2(e) <=> 1 Li2S7(e) 
   id: LiSn_combination_26
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e12, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S5(e) + 1 S3(e) <=> 1 Li2S8(e) 
   id: LiSn_combination_27
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e12, b: 0.0, Ea: 0.0}
 - equation: 1 Li2S6(e) + 1 S2(e) <=> 1 Li2S8(e) 
   id: LiSn_combination_28
-  rate-constant: {A: 1.1e40, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.1e10, b: 0.0, Ea: 0.0}
 
