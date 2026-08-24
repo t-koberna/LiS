@@ -28,13 +28,25 @@ class Tank:
     '''
     def __init__(self,path, input_file, params):
         self.inputs = input_file['cell-description']['tank']
+        self.input_file = input_file
         self.elyte_obj = ct.Solution(path, self.inputs['electrolyte-phase'])
         C_k_0_elyte = [species['C_k'] for species in self.inputs['transport']['diffusion-coefficients']]
         C_total = np.sum(C_k_0_elyte)
         X_k = C_k_0_elyte/C_total
         self.elyte_obj.X = X_k
         self.elyte_obj.TP = params.T, params.P
-        
+        self.write_yaml = 0
+
+class RateTracker:
+    def __init__(self,tank):
+        self.times = []
+        self.rates = []
+        self.tank = tank
+
+    def log_step(self, t, y):
+        rates = self.tank.elyte_obj.net_rates_of_progress
+        self.rates.append([np.copy(rates)])  
+ 
 class Solid:
     '''
     create a class to hold the properties and Cantera objects for the surface objects
@@ -119,6 +131,9 @@ def SV_0_from_data(SV_idx, SV_0_size, file_name):
     mass_S8 = data['mass_S8'].to_numpy()
     mass_Li2S = data['mass_Li2S'].to_numpy()
     C_k_elyte = data.loc[:, 'TEGDME(e)':'Li2S(e)'].to_numpy()
+    #########################################################################zsxdcfvgbhjnuiko
+    # used to go from data whjen no s in the yaml
+    #C_k_elyte = np.delete(C_k_elyte, SV_idx.elyte_species.index('S2(e)')+1, axis=1)
     c_k_end = C_k_elyte[-1,:]
     c_k_end = np.abs(c_k_end)
     SV_0[SV_idx.ptr['mass_S8']] = mass_S8[-1]
