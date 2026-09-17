@@ -37,16 +37,6 @@ class Tank:
         self.elyte_obj.TP = params.T, params.P
         self.write_yaml = 0
 
-class RateTracker:
-    def __init__(self,tank):
-        self.times = []
-        self.rates = []
-        self.tank = tank
-
-    def log_step(self, t, y):
-        rates = self.tank.elyte_obj.net_rates_of_progress
-        self.rates.append([np.copy(rates)])  
- 
 class Solid:
     '''
     create a class to hold the properties and Cantera objects for the surface objects
@@ -91,28 +81,6 @@ def Solution_Vector_0(SV_idx, tank, solid):
     SV_0[SV_idx.ptr['mass_S8']] = solid.inputs['mass-S8']
     SV_0[SV_idx.ptr['mass_Li2S']] = solid.inputs['mass-Li2S']
     SV_0[SV_idx.ptr['C_k_elyte']] =  [species['C_k'] for species in tank.inputs['transport']['diffusion-coefficients']]
-
-    return SV_0
-
-def SV_0_from_outputs(SV_idx, SV_0_size, solution):
-    '''
-    Sets the initial values from the outputs from the previous solution
-    '''
-    SV_0 = np.zeros(SV_0_size)
-    sim_outputs_y = np.transpose(solution.y)
-
-    volume_S8, = sim_outputs_y[SV_idx.ptr['volume_S8']]
-    volume_Li2S, = sim_outputs_y[SV_idx.ptr['volume_Li2S']]
-    mass_S8, = sim_outputs_y[SV_idx.ptr['mass_S8']]
-    mass_Li2S, = sim_outputs_y[SV_idx.ptr['mass_Li2S']]
-    C_k_elyte = sim_outputs_y[SV_idx.ptr['C_k_elyte']]
-    c_k_end = [i[-1] for i in C_k_elyte]
-    c_k_end = np.abs(c_k_end)
-    SV_0[SV_idx.ptr['volume_S8']] = volume_S8[-1]
-    SV_0[SV_idx.ptr['volume_Li2S']] = volume_Li2S[-1]
-    SV_0[SV_idx.ptr['mass_S8']] = mass_S8[-1]
-    SV_0[SV_idx.ptr['mass_Li2S']] = mass_Li2S[-1]
-    SV_0[SV_idx.ptr['C_k_elyte']] =  c_k_end
 
     return SV_0
 
