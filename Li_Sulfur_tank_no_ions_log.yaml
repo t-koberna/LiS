@@ -20,97 +20,91 @@ cell-description:
 
       - species: S8(e)
         D_k: 1e-11
-        C_k: 1e-40  #1.0e-12  # kmol_k/m^3
+        C_k: 1e-15  #1.0e-12  # kmol_k/m^3
         name: S8(e)
         name-plot: $\rm S_8$
 
       - species: S7(e)
         D_k: 1e-11
-        C_k: 1e-40  # kmol_k/m^3
+        C_k: 1e-15  # kmol_k/m^3
         name: S7(e)
         name-plot: $\rm S_7$
 
       - species: S6(e)
         D_k: 1e-11
-        C_k: 1e-40  # kmol_k/m^3
+        C_k: 1e-15  # kmol_k/m^3
         name: S6(e)
         name-plot: $\rm S_6$
 
       - species: S5(e)
         D_k: 1e-11
-        C_k: 1e-40  # kmol_k/m^3
+        C_k: 1e-15  # kmol_k/m^3
         name: S5(e)
         name-plot: $\rm S_5$
 
       - species: S4(e)
         D_k: 1e-11
-        C_k: 1e-40  # kmol_k/m^3
+        C_k: 1e-28 # kmol_k/m^3
         name: S4(e)
         name-plot: $\rm S_4$
 
       - species: S3(e)
         D_k: 1e-11
-        C_k: 1e-40  # kmol_k/m^3
+        C_k: 1e-18  # kmol_k/m^3
         name: S3(e)
         name-plot: $\rm S_3$
 
       - species: S2(e)
         D_k: 1e-11
-        C_k: 1e-40  # kmol_k/m^3
+        C_k: 1e-15  # kmol_k/m^3
         name: S2(e)
         name-plot: $\rm S_2$
 
-      - species: S(e)
-        D_k: 1e-11
-        C_k: 1e-40  # kmol_k/m^3
-        name: S(e)
-        name-plot: $\rm S$
-
       - species: Li2S8(e)
         D_k: 6e-11
-        C_k: 1e-40  # kmol_k/m^3
+        C_k: 1e-15  # kmol_k/m^3
         name: Li2S8(e)
         name-plot: $\rm Li_2S_8$
 
       - species: Li2S7(e)
         D_k: 1e-10
-        C_k: 1e-40  # kmol_k/m^3
+        C_k: 1e-15  # kmol_k/m^3
         name: Li2S7(e)
         name-plot: $\rm Li_2S_7$
 
       - species: Li2S6(e)
         D_k: 6e-11
-        C_k: 1e-40  # kmol_k/m^3
+        C_k: 1e-15  # kmol_k/m^3
         name: Li2S6(e)
         name-plot: $\rm Li_2S_6$
 
       - species: Li2S5(e)
         D_k: 1e-10
-        C_k: 1e-40  # kmol_k/m^3
+        C_k: 1e-15  # kmol_k/m^3
         name: Li2S5(e)
         name-plot: $\rm Li_2S_5$
 
       - species: Li2S4(e)
         D_k: 1e-10
-        C_k: 1e-40  # kmol_k/m^3
+        C_k: 1e-15  # kmol_k/m^3
         name: Li2S4(e)
         name-plot: $\rm Li_2S_4$
 
       - species: Li2S3(e)
         D_k: 1e-10
-        C_k: 1e-40 # kmol_k/m^3
+        C_k: 1e-15 # kmol_k/m^3
         name: Li2S3(e)
         name-plot: $\rm Li_2S_3$
 
       - species: Li2S2(e)
         D_k: 1e-10
-        C_k: 1e-40  # kmol_k/m^3
+        C_k: 1e-15  # kmol_k/m^3
         name: Li2S2(e)
         name-plot: $\rm Li_2S_2$
 
       - species: Li2S(e)
         D_k: 1e-10
-        C_k: 1e-40  #1.0e-12  # kmol_k/m^3
+        C_k: 1e-15  #1.0e-12  # kmol_k/m^3
         name: Li2S(e)
         name-plot: $\rm Li_2S$
   solid:
@@ -118,7 +112,7 @@ cell-description:
     surf-phase_S8: sulfur_surf
     host-phase_Li2S: lithium_sulfide                                        # Cantera phase name
     surf-phase_Li2S: lithium_sulfide_surf
-    mass-S8: 1.6e-4    # kg of S8(s)  0.00032  0.00096  0.00160   0.00192   
+    mass-S8: 11.2e-4    # kg of S8(s) 1.6e-4  4.8e-4 8e-4  11.2e-4
     mass-Li2S: 2.3e-4    # kg of Li2S(s)      # kg of S8(s)                                        
 
 # Simulation parameters:
@@ -131,14 +125,14 @@ phases:
 - name: electrolyte
   thermo: ideal-condensed
   elements: [Li, C, F, N, H, O, E, S]
-  species: [TEGDME(e), S8(e), S7(e), S6(e), S5(e), S4(e), S3(e), S2(e), S(e), Li2S8(e),
+  species: [TEGDME(e), S8(e), S7(e), S6(e), S5(e), S4(e), S3(e), S2(e), Li2S8(e),
     Li2S7(e), Li2S6(e), Li2S5(e), Li2S4(e), Li2S3(e), Li2S2(e), Li2S(e)] #, TFSI-(e)
 
   state:
     T: 298.0 K
     P: 1 atm
     X: {TEGDME(e): 1.0, S8(e): 0, S7(e): 0, S6(e): 0, S5(e): 0, S4(e): 0, S3(e): 0,
-      S2(e): 0, S(e): 0, Li2S8(e): 0, Li2S7(e): 0, Li2S6(e): 0, Li2S5(e): 0, Li2S4(e): 0, Li2S3(e): 0,
+      S2(e): 0, Li2S8(e): 0, Li2S7(e): 0, Li2S6(e): 0, Li2S5(e): 0, Li2S4(e): 0, Li2S3(e): 0,
       Li2S2(e): 0, Li2S(e): 0}            
 
   standard-concentration-basis: unity
@@ -476,54 +470,108 @@ species:
 lithium-sulfide-elyte-reactions:
 - equation: Li2S(s) <=> Li2S(e)
   id: LiSulfur_deposition
-  rate-constant: {A: 1e-7, b: 0, Ea: 0.0}
+  rate-constant: {A: 1e-11, b: 0, Ea: 0.0} #
 
 sulfur-elyte-reactions:
 - equation: S8(s) <=> S8(e)
   id: sulfur_dissolution
-  rate-constant: {A: 1e-6, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1e-8, b: 0.0, Ea: 0.0} #-6
 
 bulk-elyte-reactions:
-- equation: 1 S8(e) <=> 1 S7(e) + S(e)
+- equation: 1 S8(e) <=> 1 S6(e) + 1 S2(e)
   id: sulfur_disproportionation_10
-  rate-constant: {A: 1.00e-1, b: 0.0, Ea: 0.0}
-- equation: 1 S7(e) <=> 1 S6(e) + S(e)
+  rate-constant: {A: 1.54e-1, b: 0.0, Ea: 0.0} #
+- equation: 1 S8(e) <=> 1 S5(e) + 1 S3(e)
   id: sulfur_disproportionation_10
-  rate-constant: {A: 1.00e-1, b: 0.0, Ea: 0.0}
-- equation: 1 S6(e) <=> 1 S5(e) + S(e)
-  id: sulfur_disproportionation_10
-  rate-constant: {A: 1.00e-1, b: 0.0, Ea: 0.0}
-- equation: 1 S5(e) <=> 1 S4(e) + S(e)
-  id: sulfur_disproportionation_10
-  rate-constant: {A: 1.00e-1, b: 0.0, Ea: 0.0}
-- equation: 1 S4(e) <=> 1 S3(e) + S(e)
-  id: sulfur_disproportionation_10
-  rate-constant: {A: 1.00e-1, b: 0.0, Ea: 0.0}
-- equation: 1 S3(e) <=> 1 S2(e) + S(e)
-  id: sulfur_disproportionation_10
-  rate-constant: {A: 1.00e-1, b: 0.0, Ea: 0.0}
-- equation: 1 S2(e) <=> 2 S(e)
-  id: sulfur_disproportionation_10
-  rate-constant: {A: 1.00e-1, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.54e-4, b: 0.0, Ea: 0.0} #
 
-- equation: 1 Li2S8(e) <=> 1 S(e) + 1 Li2S7(e)
-  id: LiSn_combination_1c
-  rate-constant: {A: 1.00e-1, b: 0.0, Ea: 0.0}
-- equation: 1 Li2S7(e) <=> 1 S(e) + 1 Li2S6(e)
-  id: LiSn_combination_1c
-  rate-constant: {A: 1.00e-1, b: 0.0, Ea: 0.0}
-- equation: 1 Li2S6(e) <=> 1 S(e) + 1 Li2S5(e)
-  id: LiSn_combination_1c
-  rate-constant: {A: 1.00e-1, b: 0.0, Ea: 0.0}
-- equation: 1 Li2S5(e) <=> 1 S(e) + 1 Li2S4(e)
-  id: LiSn_combination_1c
-  rate-constant: {A: 1.00e-1, b: 0.0, Ea: 0.0}  
-- equation: 1 Li2S4(e) <=> 1 S(e) + 1 Li2S3(e)
-  id: LiSn_combination_1c
-  rate-constant: {A: 1.00e-1, b: 0.0, Ea: 0.0}
-- equation: 1 Li2S3(e) <=> 1 S(e) + 1 Li2S2(e)
-  id: LiSn_combination_1c
-  rate-constant: {A: 1.00e-1, b: 0.0, Ea: 0.0}
-- equation: 1 Li2S2(e) <=> 1 S(e) + 1 Li2S(e)
-  id: LiSn_combination_1c
-  rate-constant: {A: 1.00e-1, b: 0.0, Ea: 0.0}
+- equation: 1 S6(e) <=> 1 S4(e) + 1 S2(e)
+  id: sulfur_disproportionation_10
+  rate-constant: {A: 1.91e-9, b: 0.0, Ea: 0.0} #
+- equation: 1 S6(e) <=> 2 S3(e)
+  id: sulfur_disproportionation_10
+  rate-constant: {A: 2.88e-8, b: 0.0, Ea: 0.0} #
+- equation: 1 S5(e) <=> 1 S3(e) + 1 S2(e)
+  id: sulfur_disproportionation_10
+  rate-constant: {A: 2.54e-2, b: 0.0, Ea: 0.0} #
+
+
+- equation: 1 S8(e) <=> 2 S4(e)
+  id: sulfur_disproportionation_10
+  rate-constant: {A: 4.54e-3, b: 0.0, Ea: 0.0} #
+- equation: 1 S7(e) <=> 1 S3(e) + 1 S4(e)
+  id: sulfur_disproportionation_10
+  rate-constant: {A: 4.54e-19, b: 0.0, Ea: 0.0} #
+- equation: 1 S7(e) <=> 1 S5(e) + 1 S2(e)
+  id: sulfur_disproportionation_10
+  rate-constant: {A: 4.54e-8, b: 0.0, Ea: 0.0} #
+- equation: 1 S4(e) <=> 2 S2(e)
+  id: sulfur_disproportionation_10
+  rate-constant: {A: 4.54e12, b: 0.0, Ea: 0.0} #
+
+
+- equation: 1 Li2S(e) + 1 S2(e) <=> 1 Li2S3(e)
+  id: rxn
+  rate-constant: {A: 1.00e0, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S(e) + 1 S3(e) <=> 1 Li2S4(e)
+  id: rxn
+  rate-constant: {A: 1.00e7, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S(e) + 1 S4(e) <=> 1 Li2S5(e)
+  id: rxn
+  rate-constant: {A: 1.00e17, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S(e) + 1 S5(e) <=> 1 Li2S6(e)
+  id: rxn
+  rate-constant: {A: 1.00e3, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S(e) + 1 S6(e) <=> 1 Li2S7(e)
+  id: rxn
+  rate-constant: {A: 5.00e-10, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S(e) + 1 S7(e) <=> 1 Li2S8(e)
+  id: rxn
+  rate-constant: {A: 1.00e5, b: 0.0, Ea: 0.0} #6 #4
+- equation: 1 Li2S2(e) + 1 S2(e) <=> 1 Li2S4(e)
+  id: rxn
+  rate-constant: {A: 5.00e6, b: 0.0, Ea: 0.0} #
+- equation: 1 Li2S2(e) + 1 S3(e) <=> 1 Li2S5(e)
+  id: rxn
+  rate-constant: {A: 1.00e10, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S2(e) + 1 S4(e) <=> 1 Li2S6(e)
+  id: rxn
+  rate-constant: {A: 1.00e10, b: 0.0, Ea: 0.0} #23
+- equation: 1 Li2S2(e) + 1 S5(e) <=> 1 Li2S7(e)
+  id: rxn
+  rate-constant: {A: 1.00e10, b: 0.0, Ea: 0.0} #8
+- equation: 1 Li2S2(e) + 1 S6(e) <=> 1 Li2S8(e)
+  id: rxn
+  rate-constant: {A: 1.00e6, b: 0.0, Ea: 0.0} #2
+- equation: 1 Li2S3(e) + 1 S2(e) <=> 1 Li2S5(e)
+  id: rxn
+  rate-constant: {A: 5.00e1, b: 0.0, Ea: 0.0} #
+- equation: 1 Li2S3(e) + 1 S3(e) <=> 1 Li2S6(e)
+  id: rxn
+  rate-constant: {A: 1.00e8, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S3(e) + 1 S4(e) <=> 1 Li2S7(e)
+  id: rxn
+  rate-constant: {A: 5.00e9, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S3(e) + 1 S5(e) <=> 1 Li2S8(e)
+  id: rxn
+  rate-constant: {A: 1.00e3, b: 0.0, Ea: 0.0} #
+- equation: 1 Li2S4(e) + 1 S2(e) <=> 1 Li2S6(e)
+  id: rxn
+  rate-constant: {A: 1.00e8, b: 0.0, Ea: 0.0} #3
+- equation: 1 Li2S4(e) + 1 S3(e) <=> 1 Li2S7(e)
+  id: rxn
+  rate-constant: {A: 1.00e8, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S4(e) + 1 S4(e) <=> 1 Li2S8(e)
+  id: rxn
+  rate-constant: {A: 1.00e8, b: 0.0, Ea: 0.0} 
+- equation: 1 Li2S5(e) + 1 S2(e) <=> 1 Li2S7(e)
+  id: rxn
+  rate-constant: {A: 1.00e3, b: 0.0, Ea: 0.0}
+- equation: 1 Li2S5(e) + 1 S3(e) <=> 1 Li2S8(e)
+  id: rxn
+  rate-constant: {A: 1.00e10, b: 0.0, Ea: 0.0} #8
+- equation: 1 Li2S6(e) + 1 S2(e) <=> 1 Li2S8(e)
+  id: rxn
+  rate-constant: {A: 1.00e1, b: 0.0, Ea: 0.0} #0
+
+

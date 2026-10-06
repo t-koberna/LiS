@@ -19,7 +19,7 @@ def create_plots(SV_idx, sim_outputs, tank, solids, params, total_volume,time_en
 
     # Convert back from the logs of the concentrations
     C_k_elyte = np.exp(C_k_elyte)
-    lower_C_k_limit = 1e-30
+    lower_C_k_limit = 1e-40
     C_k_elyte = np.nan_to_num(C_k_elyte, nan=lower_C_k_limit, posinf=lower_C_k_limit, neginf=lower_C_k_limit)
 
     c_k_end = [i[-1] for i in C_k_elyte]
@@ -50,7 +50,7 @@ def create_plots(SV_idx, sim_outputs, tank, solids, params, total_volume,time_en
         moles_solid_Li2S = mass_Li2S/solids.mv_Li2S/solids.rho_Li2S
         moles_disolved_Li2S = np.multiply(C_k_elyte[SV_idx.elyte_species.index('Li2S(e)')],elyte_volume)
         ax4.plot(time, moles_solid_Li2S , label='solid')
-        ax4.plot(time, C_k_elyte[SV_idx.elyte_species.index('Li2S(e)')]*elyte_volume, label='aqueous')
+        ax4.plot(time, moles_disolved_Li2S, label='aqueous')
         ax4.plot(time, moles_solid_Li2S + moles_disolved_Li2S, label='total')
         #ax4.set_title("")
         ax4.set_ylabel(r"Moles of $Li_2S$ [kmol]")
@@ -89,7 +89,7 @@ def create_plots(SV_idx, sim_outputs, tank, solids, params, total_volume,time_en
         C_k_eq = elyte.concentrations
         C_k_eq = C_k_eq[1:]
         X_k_eq = C_k_eq/sum(C_k_eq)
-        X_eq = elyte.elyte_obj.X
+        X_eq = elyte.X
         plt.figure()
         plt.bar(name_elyte_species[1:],x_k_simulation,color='red', label='sim',width = -0.4,align='edge')
         plt.bar(name_elyte_species[1:],X_k_eq,color='k', label='eq',width = 0.4,align='edge')
@@ -188,7 +188,7 @@ def create_plots(SV_idx, sim_outputs, tank, solids, params, total_volume,time_en
                     C_k_timestep = C_k_elyte.T[t,:]
                     X_k_timestep = C_k_timestep/np.sum(C_k_timestep)
                     conc_adjustment[t,i] = ct.gas_constant * tank.elyte_obj.T/1e6*np.log(np.prod(np.power(X_k_timestep,el)))
-                    min_C = 1e-60
+                    min_C = 1e-40
                     C_k_timestep_capped = C_k_timestep.copy()
                     while math.isnan(conc_adjustment[t,i]) or math.isinf(conc_adjustment[t,i]) or conc_adjustment[t,i]==0:
                         low_C_indx = C_k_timestep_capped < min_C
@@ -254,6 +254,8 @@ def create_plots(SV_idx, sim_outputs, tank, solids, params, total_volume,time_en
         plt.legend()
         plt.tight_layout()
 
+    indx_time = int(np.argmin(np.abs(time - (time[-1]-time[0])/1e3)))
+    indx_time = 0
 
     num_rxn = tank.elyte_obj.n_reactions
     num_figs = int(np.ceil(num_rxn/16))
@@ -269,11 +271,11 @@ def create_plots(SV_idx, sim_outputs, tank, solids, params, total_volume,time_en
                 if j<num_rxn:
                     rxn = tank.elyte_obj.reaction(j) 
                     ax_rate = axes[j%16]
-                    ax_rate.plot(time,rxn_rates[:,j],color='k',linewidth = 0.5)
+                    ax_rate.plot(time[indx_time:],rxn_rates[indx_time:,j],color='k',linewidth = 0.5)
                     ax_rate.set_title(rxn.equation,fontsize=6)
                     ax_rate.set_yscale('symlog')
-                    ax_rate.yaxis.set_major_locator(MaxNLocator(nbins=5)) 
-                    ax_rate.axhline(y=0, color='b', linestyle='--', linewidth=1.5)
+                    #ax_rate.yaxis.set_major_locator(MaxNLocator(nbins=5)) 
+                    #ax_rate.axhline(y=0, color='b', linestyle='--', linewidth=1.5)
                 
                 #if j<num_rxn:
                     #ax_rate.yaxis.set_major_locator(FixedLocator(log_ticks(ax_rate)))
@@ -298,10 +300,12 @@ def create_plots(SV_idx, sim_outputs, tank, solids, params, total_volume,time_en
             ax = axes[j]
             plot_species = name_elyte_species[j]
             species_idx = SV_idx.elyte_species.index(plot_species)
-            ax.plot(time, q_dot[:,j] ,'-')
+            ax.plot(time[indx_time:], q_dot[indx_time:,j] ,'-')
             ax.set_title(plot_name_elyte_species[j])
+            ax.set_yscale('symlog')
         plt.suptitle(r"Specieces creation rates [kmol/m$^3$-s]")
-        plt.tight_layout()
+        plt.tight_layout(pad=0.1, h_pad=0.1)
+        plt.subplots_adjust(wspace=0.2)
 
     print(tank.elyte_obj.net_rates_of_progress)
     gibbs_mixture = np.zeros(np.size(time))

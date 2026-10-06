@@ -10,11 +10,16 @@ from datetime import datetime
 import os
 import pandas as pd
 
-save = 0 # 1 for save, this saves all of the state variables in a csv file
+save = 1 # 1 for save, this saves all of the state variables in a csv file
 data_start = []
 
 # Read in the yaml input file
 path = Path("Li_Sulfur_tank_no_ions_log.yaml")
+path = Path("Li_Sulfur_tank_no_ions_log_only_Sn.yaml")
+
+#path = Path("Li_Sulfur_tank_no_ions.yaml")
+
+#path = Path("Li_Sulfur_tank_no_ions_in_S.yaml")
 yaml = YAML(typ='rt')
 inputs = yaml.load(path)
 
@@ -56,12 +61,12 @@ q_dot.append(np.dot(nu.T,tank.elyte_obj.net_rates_of_progress))
 # User inputs
 method = 'Adams'                                                 # Method used by the solver
 method= 'BDF'
-rtol = 1e-8 #1e-6                                                # Relative tolerance
-atol = 1e-8#1e-12                                                # Absolute tolerance
-first_step = 1e-20                                               # Size of the initial time step
+rtol = 5e-9# 1e-9                                              # Relative tolerance
+atol = 5e-12 # 1e-12                                              # Absolute tolerance
+first_step = 1e-20                                            # Size of the initial time step
 time_start = 0                                                   # Initial time [s]
-time_end = 1e4                                                  # Final time [s]      
-min_steps = 1e02                                                 # the minimum number of steps the solver will take 
+time_end = 5e10                                     # Final time [s]      
+min_steps = 5e02                                                 # the minimum number of steps the solver will take 
 max_step = time_end/min_steps
 
 tspan = [time_start,time_end]
@@ -70,18 +75,22 @@ name_elyte_species = [species['name'] for species in tank.inputs['transport']['d
 
 # allows me to set different absolute tolerances for different state variables 
 custom_atol = np.full(np.size(SV_0), atol)   
-custom_atol[SV_idx.ptr['volume_Li2S']] = 1e-11#atol#*1e3
-custom_atol[SV_idx.ptr['volume_S8']] = 1e-11 #atol#*1e3    
-custom_atol[SV_idx.ptr['mass_S8']] = 1e-12 #atol#*1e3
-custom_atol[SV_idx.ptr['mass_Li2S']] = 1e-12#atol#*1e3
-#custom_atol[SV_idx.ptr['C_k_elyte'][name_elyte_species.index('TEGDME(e)')]] = atol
+custom_atol[SV_idx.ptr['volume_Li2S']] = 5e-14 #atol#*1e3
+custom_atol[SV_idx.ptr['volume_S8']] = 5e-15 #atol#*1e3    
+custom_atol[SV_idx.ptr['mass_S8']] = 5e-13 #atol#*1e3 
+custom_atol[SV_idx.ptr['mass_Li2S']] = 5e-12#atol#*1e3
+#custom_atol[SV_idx.ptr['C_k_elyte'][name_elyte_species.index('TEGDME(e)')]] = np.abs(np.log(atol))
+#custom_atol[SV_idx.ptr['C_k_elyte'][name_elyte_species.index('TEGDME(e)')]] = np.abs(np.log(atol))
+custom_atol[SV_idx.ptr['C_k_elyte'][name_elyte_species.index('S4(e)')]] = 1e-14#atol#*1e3
+#custom_atol[SV_idx.ptr['C_k_elyte'][name_elyte_species.index('Li2S2(e)')]] = 1e-12#atol#*1e3
+
 
 start_time = datetime.now() 
 # Constrain masses and volumes to >0
 const_idx = [int(SV_idx.ptr['volume_S8'][-1]), int(SV_idx.ptr['volume_Li2S'][-1]),int(SV_idx.ptr['mass_S8'][-1]) , int(SV_idx.ptr['mass_Li2S'][-1]) ]
 const_type = np.array([1]*len(const_idx))
 
-options =  {'userdata':(SV_idx, tank, solids, params, total_volume),
+options =  {'userdata':(SV_idx, tank, solids, params, total_volume, inputs),
                 'rtol':rtol,'atol':custom_atol, 'first_step':first_step, 'method': method, 
                 'constraints_idx': const_idx,'constraints_type': const_type, 'max_step':max_step}
 
@@ -104,7 +113,7 @@ while t_current < time_end:
     time_list.append(t_current)
     SV_list.append(np.copy(y_current))
     tank.elyte_obj = ct.Solution(path, tank.inputs['electrolyte-phase'])
-    C_k = y_current[SV_idx.ptr['C_k_elyte']]
+    C_k = np.exp(y_current[SV_idx.ptr['C_k_elyte']])
     C_total = np.sum(C_k)
     X_k = C_k/C_total
     tank.elyte_obj.TPX = tank.elyte_obj.T, tank.elyte_obj.P, X_k
@@ -133,6 +142,8 @@ end_time = datetime.now()
 duration = (end_time - start_time).total_seconds()
 print(duration)
 
+SV[SV_idx.ptr['C_k_elyte']] = np.exp(SV[SV_idx.ptr['C_k_elyte']])
+
 # save the date
 if save == 1:
     folder_name = "Data/"+datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -159,7 +170,7 @@ g_f_rxn = 1
 solid_disolution_vs_rxn = 1
 rxn_rates_pf = 1
 q_dots = 1
-gibbs_mixture = 0
+gibbs_mixture = 1
 
 plot_flags = [solid_and_disolved, species_C_k, C_k_bar, conservation_check, volumes, g_f_rxn, solid_disolution_vs_rxn, rxn_rates_pf, q_dots, gibbs_mixture]
 create_plots(SV_idx, sim_outputs, tank, solids, params, total_volume, time_end, rxn_rates,q_dot,S_8_disolve_rate,Li2S_disolve_rate,plot_flags)

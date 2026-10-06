@@ -49,8 +49,8 @@ class Solid:
         self.elyte_obj = tank.elyte_obj 
         self.surf_S8_obj = ct.Interface(path, self.inputs['surf-phase_S8'], [self.solid_S8_obj, self.elyte_obj])
         self.surf_Li2S_obj = ct.Interface(path, self.inputs['surf-phase_Li2S'], [self.solid_Li2S_obj, self.elyte_obj])
-        self.mv_S8 = self.solid_S8_obj.partial_molar_volumes                # m^3/kmol
-        self.mv_Li2S = self.solid_Li2S_obj.partial_molar_volumes            # m^3/kmol
+        self.mv_S8 = self.solid_S8_obj.partial_molar_volumes[-1]                # m^3/kmol
+        self.mv_Li2S = self.solid_Li2S_obj.partial_molar_volumes[-1]            # m^3/kmol
         self.rho_S8 = self.solid_S8_obj.density                             # kg/m^3
         self.rho_Li2S = self.solid_Li2S_obj.density                         # kg/m^3
 
